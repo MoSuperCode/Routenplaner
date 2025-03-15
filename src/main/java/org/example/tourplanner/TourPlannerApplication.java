@@ -8,7 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Properties;
 
 public class TourPlannerApplication extends Application {
     private static final Logger logger = LogManager.getLogger(TourPlannerApplication.class);
@@ -17,7 +16,7 @@ public class TourPlannerApplication extends Application {
     public void start(Stage stage) throws IOException {
         logger.info("Starting Tour Planner Application");
         try {
-            FXMLLoader fxmlLoader = new FXMLLoader(TourPlannerApplication.class.getResource("ui/views/main-view.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(TourPlannerApplication.class.getResource("/org/example/tourplanner/ui/views/main-view.fxml"));
             Scene scene = new Scene(fxmlLoader.load(), 1024, 768);
             stage.setTitle("Tour Planner");
             stage.setScene(scene);

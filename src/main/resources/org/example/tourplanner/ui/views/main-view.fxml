@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.example.tourplanner.ui.views.MainViewController"
+            prefHeight="768.0" prefWidth="1024.0">
+    <top>
+        <VBox>
+            <MenuBar>
+                <Menu text="File">
+                    <MenuItem text="Import" onAction="#onImportAction"/>
+                    <MenuItem text="Export" onAction="#onExportAction"/>
+                    <SeparatorMenuItem />
+                    <MenuItem text="Exit" onAction="#onExitAction"/>
+                </Menu>
+                <Menu text="Options">
+                    <MenuItem text="Preferences" onAction="#onPreferencesAction"/>
+                </Menu>
+                <Menu text="Help">
+                    <MenuItem text="About" onAction="#onAboutAction"/>
+                </Menu>
+            </MenuBar>
+            <ToolBar>
+                <Button text="New Tour" onAction="#onNewTourAction"/>
+                <Button text="Edit Tour" onAction="#onEditTourAction"/>
+                <Button text="Delete Tour" onAction="#onDeleteTourAction"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="New Log" onAction="#onNewLogAction"/>
+                <Separator orientation="VERTICAL"/>
+                <Label text="Search:"/>
+                <TextField fx:id="searchField" promptText="Enter search term..." onKeyReleased="#onSearchAction"/>
+            </ToolBar>
+        </VBox>
+    </top>
+
+    <left>
+        <VBox spacing="5" prefWidth="250">
+            <padding>
+                <Insets top="5" right="5" bottom="5" left="5"/>
+            </padding>
+            <Label text="Tours:"/>
+            <ListView fx:id="tourListView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </left>
+
+    <center>
+        <SplitPane dividerPositions="0.6" orientation="VERTICAL">
+            <VBox spacing="5">
+                <padding>
+                    <Insets top="5" right="5" bottom="5" left="5"/>
+                </padding>
+                <Label text="Tour Details:"/>
+                <GridPane hgap="10" vgap="10">
+                    <padding>
+                        <Insets top="5" right="5" bottom="5" left="5"/>
+                    </padding>
+
+                    <Label text="Name:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                    <Label fx:id="tourNameLabel" text="[No tour selected]" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                    <Label text="From:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                    <Label fx:id="tourFromLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                    <Label text="To:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                    <Label fx:id="tourToLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+                    <Label text="Distance:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                    <Label fx:id="tourDistanceLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+
+                    <Label text="Est. Time:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                    <Label fx:id="tourTimeLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+
+                    <Label text="Transport Type:" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                    <Label fx:id="tourTransportLabel" text="-" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+
+                    <Label text="Description:" GridPane.columnIndex="0" GridPane.rowIndex="6" GridPane.valignment="TOP"/>
+                    <TextArea fx:id="tourDescriptionArea" editable="false" wrapText="true"
+                              prefHeight="80" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="NEVER" minWidth="100"/>
+                        <ColumnConstraints hgrow="ALWAYS"/>
+                    </columnConstraints>
+                </GridPane>
+
+                <HBox alignment="CENTER">
+                    <Pane fx:id="mapPane" prefHeight="200" HBox.hgrow="ALWAYS" style="-fx-border-color: lightgray;"/>
+                </HBox>
+            </VBox>
+            <VBox spacing="5">
+                <padding>
+                    <Insets top="5" right="5" bottom="5" left="5"/>
+                </padding>
+                <HBox spacing="5" alignment="CENTER_LEFT">
+                    <Label text="Tour Logs:"/>
+                    <Pane HBox.hgrow="ALWAYS"/>
+                    <Button text="Report" onAction="#onGenerateReportAction"/>
+                    <Button text="Summary" onAction="#onGenerateSummaryAction"/>
+                </HBox>
+                <TableView fx:id="tourLogTableView" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="dateColumn" text="Date"/>
+                        <TableColumn fx:id="timeColumn" text="Total Time"/>
+                        <TableColumn fx:id="distanceColumn" text="Distance"/>
+                        <TableColumn fx:id="difficultyColumn" text="Difficulty"/>
+                        <TableColumn fx:id="ratingColumn" text="Rating"/>
+                        <TableColumn fx:id="commentColumn" text="Comment"/>
+                    </columns>
+                </TableView>
+            </VBox>
+        </SplitPane>
+    </center>
+
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-background-color: #F0F0F0;">
+            <padding>
+                <Insets top="5" right="10" bottom="5" left="10"/>
+            </padding>
+            <Label text="Status: Ready"/>
+        </HBox>
+    </bottom>
+</BorderPane>
