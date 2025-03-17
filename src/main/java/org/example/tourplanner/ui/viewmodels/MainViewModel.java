@@ -26,6 +26,10 @@ public class MainViewModel extends BaseViewModel {
     private final StringProperty searchTerm = new SimpleStringProperty("");
     private final FilteredList<TourViewModel> filteredTours;
 
+    // Timeout für verzögerte Suche (in Millisekunden)
+    private static final int SEARCH_DELAY = 300;
+    private java.util.Timer searchTimer;
+
     public MainViewModel() {
         // Initialize with some demo data for now
         createDemoData();
@@ -33,10 +37,23 @@ public class MainViewModel extends BaseViewModel {
         // Setup filtered list
         filteredTours = new FilteredList<>(tours, p -> true);
 
-        // Add listener to searchTerm property to update the filter
-        searchTerm.addListener((observable, oldValue, newValue) ->
-                updateFilter(newValue)
-        );
+        // Add listener to searchTerm property to update the filter with delay
+        searchTerm.addListener((observable, oldValue, newValue) -> {
+            // Abbrechen des vorherigen Timers, falls vorhanden
+            if (searchTimer != null) {
+                searchTimer.cancel();
+            }
+
+            // Erstellen eines neuen Timers
+            searchTimer = new java.util.Timer();
+            searchTimer.schedule(new java.util.TimerTask() {
+                @Override
+                public void run() {
+                    // Da dies in einem Timer-Thread läuft, müssen wir zurück zum JavaFX-Thread
+                    javafx.application.Platform.runLater(() -> updateFilter(newValue));
+                }
+            }, SEARCH_DELAY);
+        });
 
         logger.info("MainViewModel initialized with {} tours", tours.size());
     }
@@ -44,35 +61,52 @@ public class MainViewModel extends BaseViewModel {
     private void updateFilter(String searchText) {
         if (searchText == null || searchText.isEmpty()) {
             filteredTours.setPredicate(p -> true);
-        } else {
-            String lowerCaseFilter = searchText.toLowerCase();
-
-            filteredTours.setPredicate(tour -> {
-                // Check if tour name contains filter
-                if (tour.nameProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                    return true;
-                }
-                // Check if description contains filter
-                if (tour.descriptionProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                    return true;
-                }
-                // Check if from/to contains filter
-                if (tour.fromProperty().get().toLowerCase().contains(lowerCaseFilter) ||
-                        tour.toProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                    return true;
-                }
-                // Check in tour logs
-                for (TourLogViewModel logVM : tour.getTourLogs()) {
-                    if (logVM.commentProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                        return true;
-                    }
-                }
-                return false;
-            });
+            logger.info("Empty search term, showing all {} tours", tours.size());
+            return;
         }
 
-        logger.info("Filter updated with term '{}', filtered tours count: {}",
-                searchText, filteredTours.size());
+        String lowerCaseFilter = searchText.toLowerCase();
+        logger.info("Filtering with term: '{}'", searchText);
+
+        filteredTours.setPredicate(tour -> {
+            // Check if tour name contains filter
+            if (tour.nameProperty().get().toLowerCase().contains(lowerCaseFilter)) {
+                return true;
+            }
+            // Check if description contains filter
+            if (tour.descriptionProperty().get().toLowerCase().contains(lowerCaseFilter)) {
+                return true;
+            }
+            // Check if from/to contains filter
+            if (tour.fromProperty().get().toLowerCase().contains(lowerCaseFilter) ||
+                    tour.toProperty().get().toLowerCase().contains(lowerCaseFilter)) {
+                return true;
+            }
+            // Check if transport type contains filter
+            if (tour.transportTypeProperty().get().toLowerCase().contains(lowerCaseFilter)) {
+                return true;
+            }
+            // Check in tour logs
+            for (TourLogViewModel logVM : tour.getTourLogs()) {
+                if (logVM.commentProperty().get().toLowerCase().contains(lowerCaseFilter)) {
+                    return true;
+                }
+            }
+
+            // Check computed attributes
+            // Converting numbers to string for text search
+            if (String.valueOf(tour.popularityProperty().get()).contains(lowerCaseFilter)) {
+                return true;
+            }
+
+            if (String.valueOf(tour.childFriendlinessProperty().get()).contains(lowerCaseFilter)) {
+                return true;
+            }
+
+            return false;
+        });
+
+        logger.info("Filter updated, filtered tours count: {}", filteredTours.size());
     }
 
     private void createDemoData() {
