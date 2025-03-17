@@ -7,17 +7,25 @@ import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.concurrent.Task;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.example.tourplanner.business.service.TourLogService;
+import org.example.tourplanner.business.service.TourLogServiceImpl;
+import org.example.tourplanner.business.service.TourService;
+import org.example.tourplanner.business.service.TourServiceImpl;
 import org.example.tourplanner.models.Tour;
 import org.example.tourplanner.models.TourLog;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MainViewModel extends BaseViewModel {
     private static final Logger logger = LogManager.getLogger(MainViewModel.class);
+
+    // Services
+    private final TourService tourService;
+    private final TourLogService tourLogService;
 
     // Properties for binding
     private final ObservableList<TourViewModel> tours = FXCollections.observableArrayList();
@@ -31,8 +39,17 @@ public class MainViewModel extends BaseViewModel {
     private java.util.Timer searchTimer;
 
     public MainViewModel() {
-        // Initialize with some demo data for now
-        createDemoData();
+        // Services initialisieren
+        tourService = TourServiceImpl.getInstance();
+        tourLogService = TourLogServiceImpl.getInstance();
+
+        // Laden der Demo-Daten über Service, wenn keine Daten vorhanden sind
+        if (tourService.getAllTours().isEmpty()) {
+            createDemoData();
+        }
+
+        // Laden der Daten vom Service
+        loadToursFromService();
 
         // Setup filtered list
         filteredTours = new FilteredList<>(tours, p -> true);
@@ -58,6 +75,16 @@ public class MainViewModel extends BaseViewModel {
         logger.info("MainViewModel initialized with {} tours", tours.size());
     }
 
+    // Methode zum Laden der Touren vom Service
+    private void loadToursFromService() {
+        tours.clear();
+        List<Tour> allTours = tourService.getAllTours();
+        for (Tour tour : allTours) {
+            tours.add(new TourViewModel(tour));
+        }
+        logger.info("Loaded {} tours from service", tours.size());
+    }
+
     private void updateFilter(String searchText) {
         if (searchText == null || searchText.isEmpty()) {
             filteredTours.setPredicate(p -> true);
@@ -65,102 +92,95 @@ public class MainViewModel extends BaseViewModel {
             return;
         }
 
-        String lowerCaseFilter = searchText.toLowerCase();
-        logger.info("Filtering with term: '{}'", searchText);
+        // Direkte Suche über den Service implementieren
+        Task<List<Tour>> searchTask = new Task<>() {
+            @Override
+            protected List<Tour> call() {
+                return tourService.searchTours(searchText);
+            }
+        };
 
-        filteredTours.setPredicate(tour -> {
-            // Check if tour name contains filter
-            if (tour.nameProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                return true;
-            }
-            // Check if description contains filter
-            if (tour.descriptionProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                return true;
-            }
-            // Check if from/to contains filter
-            if (tour.fromProperty().get().toLowerCase().contains(lowerCaseFilter) ||
-                    tour.toProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                return true;
-            }
-            // Check if transport type contains filter
-            if (tour.transportTypeProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                return true;
-            }
-            // Check in tour logs
-            for (TourLogViewModel logVM : tour.getTourLogs()) {
-                if (logVM.commentProperty().get().toLowerCase().contains(lowerCaseFilter)) {
-                    return true;
-                }
-            }
-
-            // Check computed attributes
-            // Converting numbers to string for text search
-            if (String.valueOf(tour.popularityProperty().get()).contains(lowerCaseFilter)) {
-                return true;
-            }
-
-            if (String.valueOf(tour.childFriendlinessProperty().get()).contains(lowerCaseFilter)) {
-                return true;
-            }
-
-            return false;
+        searchTask.setOnSucceeded(event -> {
+            List<Tour> searchResults = searchTask.getValue();
+            // Filter aktualisieren, um nur übereinstimmende Touren anzuzeigen
+            filteredTours.setPredicate(tourViewModel ->
+                    searchResults.stream().anyMatch(tour ->
+                            tour.getId().equals(tourViewModel.getTour().getId())
+                    )
+            );
+            logger.info("Filter updated, filtered tours count: {}", filteredTours.size());
         });
 
-        logger.info("Filter updated, filtered tours count: {}", filteredTours.size());
+        // Bei Fehlern alle anzeigen
+        searchTask.setOnFailed(event -> {
+            logger.error("Search failed", searchTask.getException());
+            filteredTours.setPredicate(p -> true);
+        });
+
+        // Suche im Hintergrund ausführen
+        Thread searchThread = new Thread(searchTask);
+        searchThread.setDaemon(true);
+        searchThread.start();
     }
 
     private void createDemoData() {
         // Create some demo tours and logs
         Tour tour1 = new Tour("Vienna to Salzburg", "A beautiful trip through Austria",
                 "Vienna", "Salzburg", "Car");
-        tour1.setId(1L);
         tour1.setDistance(295.0);
         tour1.setEstimatedTime(180); // 3 hours
 
+        // Tour im Service speichern
+        tour1 = tourService.createTour(tour1);
+
+        // TourLogs erstellen
         TourLog log1 = new TourLog(LocalDateTime.now().minusDays(5),
                 "Great weather, enjoyed the trip", 3, 295.0, 185, 4);
-        log1.setId(1L);
-        log1.setTour(tour1);
+        tourLogService.createTourLog(tour1.getId(), log1);
 
         TourLog log2 = new TourLog(LocalDateTime.now().minusDays(2),
                 "Some traffic, but still good", 4, 298.0, 200, 3);
-        log2.setId(2L);
-        log2.setTour(tour1);
-
-        tour1.addTourLog(log1);
-        tour1.addTourLog(log2);
+        tourLogService.createTourLog(tour1.getId(), log2);
 
         Tour tour2 = new Tour("Vienna to Graz", "Southern route through Styria",
                 "Vienna", "Graz", "Train");
-        tour2.setId(2L);
         tour2.setDistance(200.0);
         tour2.setEstimatedTime(150); // 2.5 hours
 
+        // Tour im Service speichern
+        tour2 = tourService.createTour(tour2);
+
+        // TourLog erstellen
         TourLog log3 = new TourLog(LocalDateTime.now().minusWeeks(1),
                 "Relaxing train ride", 2, 200.0, 145, 5);
-        log3.setId(3L);
-        log3.setTour(tour2);
-        tour2.addTourLog(log3);
+        tourLogService.createTourLog(tour2.getId(), log3);
 
-        // Add to observable list
-        tours.add(new TourViewModel(tour1));
-        tours.add(new TourViewModel(tour2));
+        logger.info("Demo data created");
     }
 
     // Tour Management
     public void addTour(Tour tour) {
-        TourViewModel viewModel = new TourViewModel(tour);
+        Tour createdTour = tourService.createTour(tour);
+        TourViewModel viewModel = new TourViewModel(createdTour);
         tours.add(viewModel);
-        logger.info("Added new tour: {}", tour.getName());
+        logger.info("Added new tour: {}", createdTour.getName());
     }
 
     public void updateTour(TourViewModel viewModel) {
         viewModel.updateModel();
-        // In a real application, you would save to database here
-        logger.info("Updated tour: {}", viewModel.nameProperty().get());
+        Tour updatedTour = tourService.updateTour(viewModel.getTour());
+        // Falls nötig, das ViewModel aktualisieren
+        if (updatedTour != null) {
+            // Keine direkten Änderungen notwendig, da das ViewModel bereits aktualisiert wurde
+            logger.info("Updated tour: {}", updatedTour.getName());
+        } else {
+            logger.warn("Failed to update tour: {}", viewModel.nameProperty().get());
+        }
     }
 
     public void deleteTour(TourViewModel viewModel) {
+        Long tourId = viewModel.getTour().getId();
+        tourService.deleteTour(tourId);
         tours.remove(viewModel);
         if (selectedTour.get() == viewModel) {
             selectedTour.set(null);
@@ -171,25 +191,48 @@ public class MainViewModel extends BaseViewModel {
     // TourLog Management
     public void addTourLog(TourLog tourLog) {
         if (selectedTour.get() != null) {
-            selectedTour.get().addTourLog(tourLog);
-            logger.info("Added new tour log to tour: {}", selectedTour.get().nameProperty().get());
+            Long tourId = selectedTour.get().getTour().getId();
+            TourLog createdLog = tourLogService.createTourLog(tourId, tourLog);
+
+            if (createdLog != null) {
+                // Aktualisiere die Tour im ViewModel
+                Tour updatedTour = tourService.getTourById(tourId);
+                if (updatedTour != null) {
+                    selectedTour.get().addTourLog(createdLog);
+                    logger.info("Added new tour log to tour: {}", selectedTour.get().nameProperty().get());
+                }
+            } else {
+                logger.warn("Failed to create tour log");
+            }
         }
     }
 
     public void updateTourLog(TourLogViewModel viewModel) {
         viewModel.updateModel();
-        // In a real application, you would save to database here
-        logger.info("Updated tour log");
+        TourLog updatedLog = tourLogService.updateTourLog(viewModel.getTourLog());
+        if (updatedLog != null) {
+            logger.info("Updated tour log successfully");
+        } else {
+            logger.warn("Failed to update tour log");
+        }
     }
 
     public void deleteTourLog(TourLogViewModel viewModel) {
         if (selectedTour.get() != null) {
+            Long logId = viewModel.getTourLog().getId();
+            tourLogService.deleteTourLog(logId);
             selectedTour.get().removeTourLog(viewModel);
+
             if (selectedTourLog.get() == viewModel) {
                 selectedTourLog.set(null);
             }
             logger.info("Deleted tour log");
         }
+    }
+
+    // Methode zum Aktualisieren der Touren (kann bei einer Aktualisierung aus externen Quellen verwendet werden)
+    public void refreshTours() {
+        loadToursFromService();
     }
 
     // Properties
