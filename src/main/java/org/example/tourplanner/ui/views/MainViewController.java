@@ -1,9 +1,13 @@
 package org.example.tourplanner.ui.views;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Pane;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.util.Callback;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,9 +15,12 @@ import org.example.tourplanner.models.TourLog;
 import org.example.tourplanner.ui.viewmodels.MainViewModel;
 import org.example.tourplanner.ui.viewmodels.TourLogViewModel;
 import org.example.tourplanner.ui.viewmodels.TourViewModel;
+import org.example.tourplanner.models.Tour;
 
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.io.IOException;
 
 public class MainViewController {
     private static final Logger logger = LogManager.getLogger(MainViewController.class);
@@ -246,19 +253,121 @@ public class MainViewController {
     @FXML
     private void onNewTourAction() {
         logger.info("New tour action triggered");
-        // Implementation will be added later with dialog for creating new tour
+        try {
+            Tour newTour = new Tour();
+
+            boolean saveClicked = showTourDialog(newTour, "New Tour");
+
+            if (saveClicked) {
+                // Add new Tour to view model
+                viewModel.addTour(newTour);
+                logger.info("New tour created: {}", newTour.getName());
+            }
+        } catch (Exception e) {
+            logger.error("Error creating new tour", e);
+            showErrorDialog("Error creating new tour", e.getMessage());
+        }
     }
 
     @FXML
     private void onEditTourAction() {
         logger.info("Edit tour action triggered");
         TourViewModel selectedTour = viewModel.selectedTourProperty().get();
+
         if (selectedTour != null) {
-            // Implementation will be added later with dialog for editing
-            logger.info("Editing tour: {}", selectedTour.nameProperty().get());
+            try {
+                Tour tour = selectedTour.getTour();
+
+                boolean saveClicked = showTourDialog(tour, "Edit tour");
+
+                if (saveClicked) {
+                    selectedTour.updateFromModel();
+                    viewModel.updateTour(selectedTour);
+                    updateTourDetails(selectedTour);
+
+                    logger.info("Tour updated: {}", tour.getName());
+                }
+            } catch (Exception e) {
+                logger.error("Error editing tour", e);
+                showErrorDialog("Error editing tour", e.getMessage());
+            }
         } else {
             showNoTourSelectedWarning();
         }
+    }
+
+    private boolean showTourDialog(Tour tour, String title) {
+        try {
+            // Load the dialog FXML
+            FXMLLoader loader = new FXMLLoader();
+            loader.setLocation(getClass().getResource("/org/example/tourplanner/ui/views/tour-dialog.fxml"));
+            Parent dialogContent = loader.load();
+
+            // Create the dialog stage
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(title);
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.initOwner(tourListView.getScene().getWindow());
+            dialogStage.setScene(new Scene(dialogContent));
+
+            // Set the controller
+            AddTourDialogController controller = loader.getController();
+            controller.setDialogStage(dialogStage);
+            controller.setTour(tour);
+
+            // Show the dialog and wait for user response
+            dialogStage.showAndWait();
+
+            return controller.isSaveClicked();
+        } catch (IOException e) {
+            logger.error("Error showing tour dialog", e);
+            showErrorDialog("Error", "Could not load the tour dialog: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean showTourLogDialog(TourLog tourLog, String title) {
+        try {
+            // Load the dialog FXML
+            FXMLLoader loader = new FXMLLoader();
+            URL resource = getClass().getResource("/org/example/tourplanner/ui/views/tour-log-dialog.fxml");
+
+            if (resource == null) {
+                throw new IOException("Cannot find tour-log-dialog.fxml");
+            }
+
+            loader.setLocation(resource);
+            Parent dialogContent = loader.load();
+
+            // Create the dialog stage
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(title);
+            dialogStage.initModality(Modality.WINDOW_MODAL);
+            dialogStage.initOwner(tourListView.getScene().getWindow());
+            dialogStage.setScene(new Scene(dialogContent));
+
+            // Set the controller
+            TourLogDialogController controller = loader.getController();
+            controller.setDialogStage(dialogStage);
+            controller.setTourLog(tourLog);
+
+            // Show the dialog and wait for user response
+            dialogStage.showAndWait();
+
+            return controller.isSaveClicked();
+        } catch (IOException e) {
+            logger.error("Error showing tour log dialog: {}", e.getMessage(), e);
+            showErrorDialog("Error", "Could not load the tour log dialog: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void showErrorDialog(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     @FXML
@@ -286,9 +395,25 @@ public class MainViewController {
     private void onNewLogAction() {
         logger.info("New log action triggered");
         TourViewModel selectedTour = viewModel.selectedTourProperty().get();
+
         if (selectedTour != null) {
-            // Implementation will be added later with dialog for creating new log
-            logger.info("Creating new log for tour: {}", selectedTour.nameProperty().get());
+            try {
+                // Create a new empty tour log
+                TourLog newTourLog = new TourLog();
+                newTourLog.setDate(LocalDateTime.now());
+
+                // Show the dialog to edit the new tour log
+                boolean saveClicked = showTourLogDialog(newTourLog, "New Tour Log");
+
+                if (saveClicked) {
+                    // Add the new tour log via the view model
+                    viewModel.addTourLog(newTourLog);
+                    logger.info("New tour log created for tour: {}", selectedTour.nameProperty().get());
+                }
+            } catch (Exception e) {
+                logger.error("Error creating new tour log", e);
+                showErrorDialog("Error creating new tour log", e.getMessage());
+            }
         } else {
             showNoTourSelectedWarning();
         }

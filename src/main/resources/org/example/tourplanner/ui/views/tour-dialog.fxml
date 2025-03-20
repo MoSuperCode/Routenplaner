@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<GridPane xmlns="http://javafx.com/javafx"
+          xmlns:fx="http://javafx.com/fxml"
+          fx:controller="org.example.tourplanner.ui.views.AddTourDialogController"
+          hgap="10" vgap="10">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Name:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+    <TextField fx:id="nameField" GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.fillWidth="true" />
+
+    <Label text="From:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+    <TextField fx:id="fromField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+    <Label text="To:" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+    <TextField fx:id="toField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+    <Label text="Transport Type:" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+    <ComboBox fx:id="transportTypeComboBox" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+
+    <Label text="Description:" GridPane.columnIndex="0" GridPane.rowIndex="4" GridPane.valignment="TOP" />
+    <TextArea fx:id="descriptionArea" GridPane.columnIndex="1" GridPane.rowIndex="4" prefRowCount="4" wrapText="true" />
+
+    <Label text="Distance (km):" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+    <TextField fx:id="distanceField" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+
+    <Label text="Estimated Time (min):" GridPane.columnIndex="0" GridPane.rowIndex="6" />
+    <TextField fx:id="timeField" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+
+    <HBox spacing="10" alignment="BOTTOM_RIGHT" GridPane.columnIndex="0" GridPane.rowIndex="8" GridPane.columnSpan="2">
+        <Button text="Calculate Route" fx:id="calculateButton" onAction="#onCalculateRoute" />
+        <Pane HBox.hgrow="ALWAYS" />
+        <Button text="Cancel" onAction="#onCancel" />
+        <Button text="Save" onAction="#onSave" defaultButton="true" />
+    </HBox>
+
+    <columnConstraints>
+        <ColumnConstraints hgrow="NEVER" minWidth="150" />
+        <ColumnConstraints hgrow="ALWAYS" minWidth="300" />
+    </columnConstraints>
+</GridPane>

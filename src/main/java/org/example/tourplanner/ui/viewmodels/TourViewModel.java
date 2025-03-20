@@ -83,6 +83,19 @@ public class TourViewModel extends BaseViewModel {
         tour.setRouteImagePath(routeImagePath.get());
     }
 
+    public void updateFromModel() {
+        name.set(tour.getName());
+        description.set(tour.getDescription());
+        from.set(tour.getFrom());
+        to.set(tour.getTo());
+        transportType.set(tour.getTransportType());
+        distance.set(tour.getDistance());
+        estimatedTime.set(tour.getEstimatedTime());
+        routeImagePath.set(tour.getRouteImagePath());
+        popularity.set(tour.getPopularity());
+        childFriendliness.set(tour.getChildFriendliness());
+    }
+
     // Getters for properties to bind to UI
     public LongProperty idProperty() {
         return id;

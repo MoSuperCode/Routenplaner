@@ -190,17 +190,20 @@ public class MainViewModel extends BaseViewModel {
 
     // TourLog Management
     public void addTourLog(TourLog tourLog) {
-        if (selectedTour.get() != null) {
-            Long tourId = selectedTour.get().getTour().getId();
+        // selectedTourProperty().get() instead of selectedTour.get()
+        TourViewModel selectedTourViewModel = selectedTourProperty().get();
+
+        if (selectedTourViewModel != null) {
+            Long tourId = selectedTourViewModel.getTour().getId();
             TourLog createdLog = tourLogService.createTourLog(tourId, tourLog);
 
             if (createdLog != null) {
-                // Aktualisiere die Tour im ViewModel
-                Tour updatedTour = tourService.getTourById(tourId);
-                if (updatedTour != null) {
-                    selectedTour.get().addTourLog(createdLog);
-                    logger.info("Added new tour log to tour: {}", selectedTour.get().nameProperty().get());
-                }
+                // Update view model
+                selectedTourViewModel.addTourLog(createdLog);
+                logger.info("Added new tour log to tour: {}", selectedTourViewModel.nameProperty().get());
+
+                // Refresh tour logs table view
+                selectedTourLogProperty().set(null);
             } else {
                 logger.warn("Failed to create tour log");
             }

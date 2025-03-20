@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<GridPane xmlns="http://javafx.com/javafx"
+          xmlns:fx="http://javafx.com/fxml"
+          fx:controller="org.example.tourplanner.ui.views.TourLogDialogController"
+          hgap="10" vgap="10">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Date:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+    <DatePicker fx:id="datePicker" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+    <Label text="Time:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+    <HBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="1">
+        <TextField fx:id="hoursField" prefWidth="60" promptText="Hours" />
+        <Label text=":" />
+        <TextField fx:id="minutesField" prefWidth="60" promptText="Min" />
+    </HBox>
+
+    <Label text="Total Distance (km):" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+    <TextField fx:id="distanceField" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+    <Label text="Difficulty (1-10):" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+    <Slider fx:id="difficultySlider" min="1" max="10" showTickLabels="true" showTickMarks="true"
+            majorTickUnit="1" minorTickCount="0" snapToTicks="true"
+            GridPane.columnIndex="1" GridPane.rowIndex="3" />
+
+    <Label text="Rating (1-5):" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+    <HBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="4">
+        <fx:define>
+            <ToggleGroup fx:id="ratingGroup" />
+        </fx:define>
+        <RadioButton text="1" toggleGroup="$ratingGroup" userData="1" />
+        <RadioButton text="2" toggleGroup="$ratingGroup" userData="2" />
+        <RadioButton text="3" toggleGroup="$ratingGroup" userData="3" />
+        <RadioButton text="4" toggleGroup="$ratingGroup" userData="4" />
+        <RadioButton text="5" toggleGroup="$ratingGroup" userData="5" />
+    </HBox>
+
+    <Label text="Comment:" GridPane.columnIndex="0" GridPane.rowIndex="5" GridPane.valignment="TOP" />
+    <TextArea fx:id="commentArea" GridPane.columnIndex="1" GridPane.rowIndex="5" prefRowCount="4" wrapText="true" />
+
+    <HBox spacing="10" alignment="BOTTOM_RIGHT" GridPane.columnIndex="0" GridPane.rowIndex="6" GridPane.columnSpan="2">
+        <Button text="Cancel" onAction="#onCancel" />
+        <Button text="Save" onAction="#onSave" defaultButton="true" />
+    </HBox>
+
+    <columnConstraints>
+        <ColumnConstraints hgrow="NEVER" minWidth="150" />
+        <ColumnConstraints hgrow="ALWAYS" minWidth="250" />
+    </columnConstraints>
+</GridPane>
