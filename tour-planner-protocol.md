@@ -1,5 +1,7 @@
 # Tour Planner Application Protocol
 
+look it up in Github for a better experience: https://github.com/MoSuperCode/Routenplaner.git
+
 ## 1. Introduction
 
 The Tour Planner is a JavaFX desktop application developed using the Model-View-ViewModel (MVVM) architectural pattern. It allows users to plan, document, and analyze tours (trips) with detailed information and logging capabilities. This document describes the user experience design and includes analysis of the application wireframes.
