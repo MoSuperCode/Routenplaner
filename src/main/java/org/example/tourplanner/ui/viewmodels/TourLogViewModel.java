@@ -44,7 +44,14 @@ public class TourLogViewModel extends BaseViewModel {
     }
 
     // Method to update the model from the viewmodel
+    // Method to update the model from the viewmodel
     public void updateModel() {
+        // Debug
+        System.out.println("Updating tour log from UI: " +
+                "Comment=" + comment.get() +
+                ", Difficulty=" + difficulty.get() +
+                ", Rating=" + rating.get());
+
         tourLog.setDate(date.get());
         tourLog.setComment(comment.get());
         tourLog.setDifficulty(difficulty.get());
@@ -54,6 +61,12 @@ public class TourLogViewModel extends BaseViewModel {
     }
 
     public void refreshFromModel() {
+        // Debug
+        System.out.println("Refreshing view model with: " +
+                "Comment=" + tourLog.getComment() +
+                ", Difficulty=" + tourLog.getDifficulty() +
+                ", Rating=" + tourLog.getRating());
+
         this.date.set(tourLog.getDate());
         this.comment.set(tourLog.getComment());
         this.difficulty.set(tourLog.getDifficulty());

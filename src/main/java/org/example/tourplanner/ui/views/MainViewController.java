@@ -464,7 +464,10 @@ public class MainViewController {
                 boolean saveClicked = showTourLogDialog(tourLog, "Edit Tour Log");
 
                 if (saveClicked) {
-                    // Update the tour log via view model
+                    // Explicitly refresh view model from updated model
+                    selectedLog.refreshFromModel();
+
+                    // Update tour log via view model
                     viewModel.updateTourLog(selectedLog);
 
                     // Force refresh table view

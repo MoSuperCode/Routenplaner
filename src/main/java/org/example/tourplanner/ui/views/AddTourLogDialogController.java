@@ -127,15 +127,16 @@ public class AddTourLogDialogController {
     @FXML
     private void onSave() {
         if (isInputValid()) {
-            // Update tour log with form values
-            LocalDateTime dateTime = LocalDateTime.of(
-                    datePicker.getValue(),
-                    LocalTime.of(
-                            Integer.parseInt(hoursField.getText().isEmpty() ? "0" : hoursField.getText()),
-                            Integer.parseInt(minutesField.getText().isEmpty() ? "0" : minutesField.getText())
-                    )
-            );
-            tourLog.setDate(dateTime);
+            if (datePicker.isEditable() && datePicker.getValue() != null) {
+                LocalDateTime dateTime = LocalDateTime.of(
+                        datePicker.getValue(),
+                        LocalTime.of(
+                                Integer.parseInt(hoursField.getText().isEmpty() ? "0" : hoursField.getText()),
+                                Integer.parseInt(minutesField.getText().isEmpty() ? "0" : minutesField.getText())
+                        )
+                );
+                tourLog.setDate(dateTime);
+            }
 
             // Get total time in minutes
             int totalMinutes = Integer.parseInt(hoursField.getText().isEmpty() ? "0" : hoursField.getText()) * 60 +

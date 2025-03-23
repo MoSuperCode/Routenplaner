@@ -116,6 +116,15 @@ public class TourLogServiceImpl implements TourLogService {
         existingLog.setTotalTime(tourLog.getTotalTime());
         existingLog.setRating(tourLog.getRating());
 
+        // Get parent tour and update it to ensure persistence
+        Tour tour = existingLog.getTour();
+        if (tour != null) {
+            Tour updatedTour = tourService.updateTour(tour);
+            if (updatedTour == null) {
+                logger.warn("Failed to update parent tour");
+            }
+        }
+
         logger.info("Tour log updated successfully");
         return existingLog;
     }
