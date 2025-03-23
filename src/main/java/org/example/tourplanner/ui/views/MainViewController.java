@@ -347,7 +347,7 @@ public class MainViewController {
             dialogStage.setScene(new Scene(dialogContent));
 
             // Set the controller
-            TourLogDialogController controller = loader.getController();
+            AddTourLogDialogController controller = loader.getController();
             controller.setDialogStage(dialogStage);
             controller.setTourLog(tourLog);
 

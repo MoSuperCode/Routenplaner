@@ -11,8 +11,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-public class TourLogDialogController {
-    private static final Logger logger = LogManager.getLogger(TourLogDialogController.class);
+public class AddTourLogDialogController {
+    private static final Logger logger = LogManager.getLogger(AddTourLogDialogController.class);
 
     @FXML
     private DatePicker datePicker;
@@ -73,7 +73,7 @@ public class TourLogDialogController {
     public void setTourLog(TourLog tourLog) {
         this.tourLog = tourLog;
 
-        // Populate fields with tour log data if editing an existing log
+        // Fill fields with tour log data if editing an existing log
         if (tourLog.getId() != null) {
             // Set date
             if (tourLog.getDate() != null) {

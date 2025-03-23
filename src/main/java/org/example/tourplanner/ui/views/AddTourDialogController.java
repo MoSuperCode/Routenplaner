@@ -137,6 +137,7 @@ public class AddTourDialogController {
         logger.info("Route calculation requested for {} to {}", fromField.getText(), toField.getText());
     }
 
+    // Input-Validation
     private boolean isInputValid() {
         String errorMessage = "";
 
