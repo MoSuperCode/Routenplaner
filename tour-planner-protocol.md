@@ -102,7 +102,7 @@ The toolbar provides quick access to the most common operations:
 5. The user clicks "Save" to create the log or "Cancel" to abort
 6. If saved, the new log appears in the tour logs table
 
-#### 4.2.2 Editing a Tour Log (To Be Implemented)
+#### 4.2.2 Editing a Tour Log
 
 1. The user selects a tour from the list
 2. The user selects a log entry from the tour logs table
@@ -112,7 +112,7 @@ The toolbar provides quick access to the most common operations:
 6. The user clicks "Save" to apply changes or "Cancel" to discard them
 7. The logs table is updated to reflect any changes
 
-#### 4.2.3 Deleting a Tour Log (To Be Implemented)
+#### 4.2.3 Deleting a Tour Log
 
 1. The user selects a tour from the list
 2. The user selects a log entry from the tour logs table
