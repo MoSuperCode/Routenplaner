@@ -127,18 +127,18 @@ The toolbar provides quick access to the most common operations:
 3. The search includes tour names, descriptions, locations, and log comments
 4. Clearing the search field shows all tours again
 
-### 4.4 Report Generation
+### 4.4 Report Generation 
 
 1. The user selects a tour from the list
-2. The user clicks the "Report" button
-3. A detailed PDF report is generated with all tour information and logs
-4. The report is displayed or saved according to user preference
+2. The user clicks the "Report" button 
+3. A detailed PDF report is generated with all tour information and logs // to be implemented
+4. The report is displayed or saved according to user preference // to be implemented
 
-### 4.5 Summary Generation
+### 4.5 Summary Generation // to be implemented
 
 1. The user clicks the "Summary" button
-2. A summary report is generated containing aggregated statistics about all tours
-3. The summary is displayed or saved according to user preference
+2. A summary report is generated containing aggregated statistics about all tours // to be implemented
+3. The summary is displayed or saved according to user preference // to be implemented
 
 ## 5. Data Display
 
