@@ -190,7 +190,6 @@ public class MainViewModel extends BaseViewModel {
 
     // TourLog Management
     public void addTourLog(TourLog tourLog) {
-        // selectedTourProperty().get() instead of selectedTour.get()
         TourViewModel selectedTourViewModel = selectedTourProperty().get();
 
         if (selectedTourViewModel != null) {
@@ -211,10 +210,13 @@ public class MainViewModel extends BaseViewModel {
     }
 
     public void updateTourLog(TourLogViewModel viewModel) {
-        viewModel.updateModel();
+        viewModel.updateModel();  // updates model from view model
         TourLog updatedLog = tourLogService.updateTourLog(viewModel.getTourLog());
+
         if (updatedLog != null) {
-            logger.info("Updated tour log successfully");
+            // refresh view model properties from updated model
+            viewModel.refreshFromModel();
+            logger.info("Tour log updated successfully");
         } else {
             logger.warn("Failed to update tour log");
         }
@@ -229,7 +231,7 @@ public class MainViewModel extends BaseViewModel {
             if (selectedTourLog.get() == viewModel) {
                 selectedTourLog.set(null);
             }
-            logger.info("Deleted tour log");
+            logger.info("Tour log deleted");
         }
     }
 

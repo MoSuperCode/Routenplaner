@@ -449,4 +449,65 @@ public class MainViewController {
         alert.setContentText("Please select a tour from the list.");
         alert.showAndWait();
     }
+
+    @FXML
+    private void onEditTourLogAction() {
+        logger.info("Edit tour log action triggered");
+        TourLogViewModel selectedLog = viewModel.selectedTourLogProperty().get();
+
+        if (selectedLog != null) {
+            try {
+                // Get tour log from view model
+                TourLog tourLog = selectedLog.getTourLog();
+
+                // Show dialog to edit tour log
+                boolean saveClicked = showTourLogDialog(tourLog, "Edit Tour Log");
+
+                if (saveClicked) {
+                    // Update the tour log via view model
+                    viewModel.updateTourLog(selectedLog);
+
+                    // Force refresh table view
+                    tourLogTableView.refresh();
+
+                    logger.info("Tour log updated");
+                }
+            } catch (Exception e) {
+                logger.error("Error editing tour log", e);
+                showErrorDialog("Error editing tour log", e.getMessage());
+            }
+        } else {
+            showNoLogSelectedWarning();
+        }
+    }
+
+    @FXML
+    private void onDeleteTourLogAction() {
+        logger.info("Delete tour log action triggered");
+        TourLogViewModel selectedLog = viewModel.selectedTourLogProperty().get();
+
+        if (selectedLog != null) {
+            Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmDialog.setTitle("Delete Tour Log");
+            confirmDialog.setHeaderText("Delete Tour Log");
+            confirmDialog.setContentText("Are you sure you want to delete this tour log?");
+
+            confirmDialog.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.OK) {
+                    viewModel.deleteTourLog(selectedLog);
+                    logger.info("Tour log deleted");
+                }
+            });
+        } else {
+            showNoLogSelectedWarning();
+        }
+    }
+
+    private void showNoLogSelectedWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("No Tour Log Selected");
+        alert.setHeaderText("No Tour Log Selected");
+        alert.setContentText("Please select a tour log from the table.");
+        alert.showAndWait();
+    }
 }

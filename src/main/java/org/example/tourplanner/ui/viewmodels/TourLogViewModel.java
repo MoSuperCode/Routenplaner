@@ -53,6 +53,15 @@ public class TourLogViewModel extends BaseViewModel {
         tourLog.setRating(rating.get());
     }
 
+    public void refreshFromModel() {
+        this.date.set(tourLog.getDate());
+        this.comment.set(tourLog.getComment());
+        this.difficulty.set(tourLog.getDifficulty());
+        this.totalDistance.set(tourLog.getTotalDistance());
+        this.totalTime.set(tourLog.getTotalTime());
+        this.rating.set(tourLog.getRating());
+    }
+
     // Getters for properties to bind to UI
     public LongProperty idProperty() {
         return id;

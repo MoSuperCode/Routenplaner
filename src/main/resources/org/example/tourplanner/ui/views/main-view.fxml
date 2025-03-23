@@ -98,6 +98,8 @@
                 <HBox spacing="5" alignment="CENTER_LEFT">
                     <Label text="Tour Logs:"/>
                     <Pane HBox.hgrow="ALWAYS"/>
+                    <Button text="Edit Log" onAction="#onEditTourLogAction"/>
+                    <Button text="Delete Log" onAction="#onDeleteTourLogAction"/>
                     <Button text="Report" onAction="#onGenerateReportAction"/>
                     <Button text="Summary" onAction="#onGenerateSummaryAction"/>
                 </HBox>
