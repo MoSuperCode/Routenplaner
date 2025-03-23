@@ -30,8 +30,8 @@ The main application window is divided into several key areas:
 ### 3.2 Menu Structure
 
 - **File Menu**:
-  - Import: Import tours from external sources
-  - Export: Export tours to external formats
+  - Import: Import tours from external sources //work in progress
+  - Export: Export tours to external formats //work in progress
   - Exit: Close the application
   
 - **Options Menu**:
@@ -65,7 +65,7 @@ The toolbar provides quick access to the most common operations:
    - Distance (km)
    - Estimated time (minutes)
 3. The user fills in the necessary details
-4. The user can optionally click "Calculate Route" to automatically determine distance and time
+4. The user can optionally click "Calculate Route" to automatically determine distance and time // work in progress
 5. The user clicks "Save" to create the tour or "Cancel" to abort
 6. If saved, the new tour appears in the tour list and is selected automatically
 
@@ -189,9 +189,8 @@ Based on the current implementation status, the following enhancements should be
 
 ### 7.3 Responsive Design
 
-- All components resize appropriately when the window is resized
-- Split panes allow users to customize the layout based on their needs
-- The interface maintains usability at different window sizes
+- A Few components resize appropriately when the window is resized, the rest is fixed for a specific size
+- The interface maintains usability at different window sizes (but there are limits)
 
 ## 8. Conclusion
 
