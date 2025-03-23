@@ -18,8 +18,7 @@ The Tour Planner application follows the MVVM pattern with the following compone
 ### 3.1 Main Application Window
 
 The main application window is divided into several key areas:
-![Bildschirmfoto 2025-03-23 um 22.29.00.png](../../../../Bildschirmfoto%202025-03-23%20um%2022.29.00.png)
-![Main Window Wireframe](tour-planner-wireframe.png)
+![Bildschirmfoto 2025-03-23 um 22.29.00.png](Bildschirmfoto%202025-03-23%20um%2022.29.00.png)
 
 1. **Menu Bar**: Contains File, Options, and Help menus
 2. **Toolbar**: Quick access buttons for common operations
