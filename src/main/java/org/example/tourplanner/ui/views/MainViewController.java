@@ -21,6 +21,10 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import org.example.tourplanner.config.ConfigurationManager;
+import java.io.File;
 
 public class MainViewController {
     private static final Logger logger = LogManager.getLogger(MainViewController.class);
@@ -55,6 +59,9 @@ public class MainViewController {
 
     @FXML
     private Pane mapPane;
+
+    @FXML
+    private ImageView mapImageView;
 
     @FXML
     private TableView<TourLogViewModel> tourLogTableView;
@@ -111,6 +118,11 @@ public class MainViewController {
                     }
                 }
         );
+
+        // Passen Sie die Bildgröße an das mapPane an
+        mapImageView.fitWidthProperty().bind(mapPane.widthProperty().subtract(10));
+        mapImageView.fitHeightProperty().bind(mapPane.heightProperty().subtract(10));
+        mapImageView.setPreserveRatio(true);
 
         // Initialize with first tour selected if available
         if (!viewModel.getFilteredTours().isEmpty()) {
@@ -199,6 +211,7 @@ public class MainViewController {
             tourTimeLabel.setText("-");
             tourTransportLabel.setText("-");
             tourDescriptionArea.setText("");
+            mapImageView.setImage(null); // Bild löschen, wenn keine Tour ausgewählt ist
             return;
         }
 
@@ -213,7 +226,45 @@ public class MainViewController {
         tourTransportLabel.setText(tour.transportTypeProperty().get());
         tourDescriptionArea.setText(tour.descriptionProperty().get());
 
+        // Laden des Kartenbildes, wenn vorhanden
+        loadMapImage(tour.routeImagePathProperty().get());
+
         logger.info("Updated tour details for: {}", tour.nameProperty().get());
+    }
+
+    /**
+     * Lädt das Kartenbild aus dem angegebenen Pfad
+     * @param imagePath Pfad zum Kartenbild
+     */
+    private void loadMapImage(String imagePath) {
+        if (imagePath == null || imagePath.isEmpty()) {
+            mapImageView.setImage(null);
+            logger.info("No map image path available");
+            return;
+        }
+
+        try {
+            // Holen des Basispfads aus der Konfiguration
+            ConfigurationManager configManager = ConfigurationManager.getInstance();
+            String basePath = configManager.getProperty("file.basePath", "./resources/images");
+
+            // Erstellen des vollständigen Pfads
+            File imageFile = new File(basePath, imagePath);
+
+            if (imageFile.exists()) {
+                // Laden des Bildes
+                Image image = new Image(imageFile.toURI().toString());
+                mapImageView.setImage(image);
+
+                logger.info("Map image loaded successfully from: {}", imageFile.getAbsolutePath());
+            } else {
+                logger.warn("Map image file not found: {}", imageFile.getAbsolutePath());
+                mapImageView.setImage(null);
+            }
+        } catch (Exception e) {
+            logger.error("Error loading map image", e);
+            mapImageView.setImage(null);
+        }
     }
 
     @FXML

@@ -34,6 +34,7 @@
     <TextField fx:id="timeField" GridPane.columnIndex="1" GridPane.rowIndex="6" />
 
     <HBox spacing="10" alignment="BOTTOM_RIGHT" GridPane.columnIndex="0" GridPane.rowIndex="8" GridPane.columnSpan="2">
+        <ProgressBar fx:id="progressBar" visible="false" prefWidth="150" />
         <Button text="Calculate Route" fx:id="calculateButton" onAction="#onCalculateRoute" />
         <Pane HBox.hgrow="ALWAYS" />
         <Button text="Cancel" onAction="#onCancel" />

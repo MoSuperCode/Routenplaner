@@ -7,6 +7,13 @@ import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.example.tourplanner.models.Tour;
+import javafx.concurrent.Task;
+import javafx.scene.Cursor;
+import org.example.tourplanner.business.service.RouteService;
+import javafx.concurrent.Task;
+import javafx.scene.Cursor;
+import org.example.tourplanner.business.service.RouteService;
+import javafx.scene.control.ProgressBar;
 
 public class AddTourDialogController {
     private static final Logger logger = LogManager.getLogger(AddTourDialogController.class);
@@ -116,23 +123,118 @@ public class AddTourDialogController {
         logger.info("Tour edit canceled");
     }
 
+
+
+
+    @FXML
+    private ProgressBar progressBar; // ProgressBar zur tour-dialog.fxml hinzufügen
+
     @FXML
     private void onCalculateRoute() {
-        if (fromField.getText().isEmpty() || toField.getText().isEmpty()) {
+        if (fromField.getText().isEmpty() || toField.getText().isEmpty() || transportTypeComboBox.getValue() == null) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Missing Information");
-            alert.setHeaderText("Please enter From and To locations");
-            alert.setContentText("Both From and To fields must be filled to calculate a route.");
+            alert.setHeaderText("Please enter From, To locations and select a Transport Type");
+            alert.setContentText("All fields must be filled to calculate a route.");
             alert.showAndWait();
             return;
         }
 
-        // Placeholder for route calculation
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Route Calculation");
-        alert.setHeaderText("Route Calculation");
-        alert.setContentText("Route calculation would be implemented here.\nFor now, please enter distance and time manually.");
-        alert.showAndWait();
+        // Zeige Wartecursor an
+        dialogStage.getScene().setCursor(Cursor.WAIT);
+
+        // Optional: ProgressBar anzeigen, falls vorhanden
+        if (progressBar != null) {
+            progressBar.setVisible(true);
+        }
+
+        // Erstelle eine Hintergrundaufgabe, um die UI nicht zu blockieren
+        Task<Tour> calculateRouteTask = new Task<>() {
+            @Override
+            protected Tour call() {
+                try {
+                    // Erstelle temporäre Tour für die Berechnung
+                    Tour tempTour = new Tour(
+                            nameField.getText(),
+                            descriptionArea.getText(),
+                            fromField.getText(),
+                            toField.getText(),
+                            transportTypeComboBox.getValue()
+                    );
+
+                    // Berechne Route mithilfe von RouteService
+                    RouteService routeService = RouteService.getInstance();
+                    Tour calculatedTour = routeService.calculateRoute(tempTour);
+                    return calculatedTour;
+                } catch (Exception e) {
+                    logger.error("Error calculating route", e);
+                    return null;
+                }
+            }
+        };
+
+        // Handle Aufgabenabschluss
+        calculateRouteTask.setOnSucceeded(event -> {
+            // Cursor zurücksetzen
+            dialogStage.getScene().setCursor(Cursor.DEFAULT);
+
+            // Optional: ProgressBar ausblenden
+            if (progressBar != null) {
+                progressBar.setVisible(false);
+            }
+
+            Tour calculatedTour = calculateRouteTask.getValue();
+            if (calculatedTour != null) {
+                // UI-Felder mit berechneten Werten aktualisieren
+                distanceField.setText(String.format("%.2f", calculatedTour.getDistance()));
+                timeField.setText(String.valueOf(calculatedTour.getEstimatedTime()));
+
+                // Kopieren Sie die routeImagePath, wenn sie generiert wurde
+                if (calculatedTour.getRouteImagePath() != null && !calculatedTour.getRouteImagePath().isEmpty()) {
+                    tour.setRouteImagePath(calculatedTour.getRouteImagePath());
+                }
+
+                // Erfolgsmeldung anzeigen
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Route Calculation");
+                alert.setHeaderText("Route Calculated Successfully");
+                alert.setContentText(String.format(
+                        "Distance: %.2f km\nEstimated Time: %d minutes",
+                        calculatedTour.getDistance(),
+                        calculatedTour.getEstimatedTime()
+                ));
+                alert.showAndWait();
+            } else {
+                // Fehlermeldung anzeigen
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Route Calculation Failed");
+                alert.setHeaderText("Could not calculate route");
+                alert.setContentText("Please check your internet connection and the validity of the locations.");
+                alert.showAndWait();
+            }
+        });
+
+        calculateRouteTask.setOnFailed(event -> {
+            // Cursor zurücksetzen
+            dialogStage.getScene().setCursor(Cursor.DEFAULT);
+
+            // Optional: ProgressBar ausblenden
+            if (progressBar != null) {
+                progressBar.setVisible(false);
+            }
+
+            // Fehlermeldung anzeigen
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Route Calculation Failed");
+            alert.setHeaderText("Error During Route Calculation");
+            alert.setContentText("An error occurred: " + calculateRouteTask.getException().getMessage());
+            alert.showAndWait();
+        });
+
+        // Starten der Aufgabe in einem Hintergrundthread
+        Thread thread = new Thread(calculateRouteTask);
+        thread.setDaemon(true);
+        thread.start();
 
         logger.info("Route calculation requested for {} to {}", fromField.getText(), toField.getText());
     }

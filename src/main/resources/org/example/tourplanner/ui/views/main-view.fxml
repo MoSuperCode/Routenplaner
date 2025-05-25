@@ -4,6 +4,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
+<?import javafx.scene.image.ImageView?>
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.example.tourplanner.ui.views.MainViewController"
@@ -118,11 +119,10 @@
     </center>
 
     <bottom>
-        <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-background-color: #F0F0F0;">
-            <padding>
-                <Insets top="5" right="10" bottom="5" left="10"/>
-            </padding>
-            <Label text="Status: Ready"/>
+        <HBox alignment="CENTER">
+            <Pane fx:id="mapPane" prefHeight="200" HBox.hgrow="ALWAYS" style="-fx-border-color: lightgray;">
+                <ImageView fx:id="mapImageView" fitWidth="800" fitHeight="200" preserveRatio="true" />
+            </Pane>
         </HBox>
     </bottom>
 </BorderPane>
