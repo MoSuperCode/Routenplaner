@@ -16,45 +16,31 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class OpenRouteServiceClient {
     private static final Logger logger = LogManager.getLogger(OpenRouteServiceClient.class);
     private final String apiKey;
-    private final String apiUrl;
     private final ObjectMapper objectMapper;
 
     public OpenRouteServiceClient() {
         ConfigurationManager configManager = ConfigurationManager.getInstance();
         this.apiKey = configManager.getProperty("ors.api.key");
-        this.apiUrl = configManager.getProperty("ors.api.url");
         this.objectMapper = new ObjectMapper();
 
-        logger.info("OpenRouteServiceClient initialized with URL: {}", apiUrl);
+        logger.info("OpenRouteServiceClient initialized with API key: {}***",
+                apiKey != null ? apiKey.substring(0, Math.min(8, apiKey.length())) : "null");
     }
 
     /**
      * Gets directions between two locations
-     * @param start Starting location (e.g., "Vienna, Austria")
-     * @param end Destination location (e.g., "Salzburg, Austria")
-     * @param transportType Type of transport (driving-car, cycling-regular, foot-walking)
-     * @return RouteInfo containing distance and duration
      */
     public RouteInfo getDirections(String start, String end, String transportType) throws IOException {
         logger.info("Getting directions from {} to {} using {}", start, end, transportType);
 
-
-
-        logger.info("Starting route calculation with API key: {}", apiKey);
-        // First, we need to geocode the locations to get coordinates
+        // First, geocode the locations
         double[] startCoords = geocode(start);
         double[] endCoords = geocode(end);
-
-        if (startCoords == null) {
-            logger.error("Could not geocode start location: {}", start);
-        }
-        if (endCoords == null) {
-            logger.error("Could not geocode end location: {}", end);
-        }
 
         if (startCoords == null || endCoords == null) {
             logger.error("Failed to geocode locations");
@@ -64,14 +50,16 @@ public class OpenRouteServiceClient {
         // Map transport type to ORS profile
         String profile = mapTransportTypeToProfile(transportType);
 
-        // Build URL for directions API
-        String url = apiUrl + "/directions/" + profile + "?api_key=" + apiKey
-                + "&start=" + startCoords[0] + "," + startCoords[1]
-                + "&end=" + endCoords[0] + "," + endCoords[1];
+        // Build URL for directions API - KORRIGIERT
+        String url = String.format(Locale.US,
+                "https://api.openrouteservice.org/v2/directions/%s?api_key=%s&start=%.6f,%.6f&end=%.6f,%.6f",
+                profile, apiKey, startCoords[0], startCoords[1], endCoords[0], endCoords[1]
+        );
+
+        logger.info("Directions API URL: {}", url);
 
         // Execute request
         String responseBody = executeRequest(url);
-        logger.info("Executing API request to URL: {}", url);
         if (responseBody == null) {
             return null;
         }
@@ -82,15 +70,17 @@ public class OpenRouteServiceClient {
 
     /**
      * Geocodes a location string to coordinates
-     * @param location Location name (e.g., "Vienna, Austria")
-     * @return Array of [longitude, latitude] or null if geocoding failed
      */
     public double[] geocode(String location) throws IOException {
         logger.info("Geocoding location: {}", location);
 
         String encodedLocation = URLEncoder.encode(location, StandardCharsets.UTF_8);
-        // Korrigierte URL für Geocoding - entfernen Sie "/v2" für Geocoding
-        String url = "https://api.openrouteservice.org/geocode/search?text=" + encodedLocation;
+
+        // KORRIGIERTE Geocoding URL
+        String url = String.format(
+                "https://api.openrouteservice.org/geocode/search?api_key=%s&text=%s",
+                apiKey, encodedLocation
+        );
 
         logger.info("Geocoding URL: {}", url);
 
@@ -121,18 +111,13 @@ public class OpenRouteServiceClient {
      * Maps application transport types to OpenRouteService profiles
      */
     private String mapTransportTypeToProfile(String transportType) {
-        switch (transportType.toLowerCase()) {
-            case "car":
-                return "driving-car";
-            case "bicycle":
-                return "cycling-regular";
-            case "walking":
-                return "foot-walking";
-            case "public transport":
-                return "driving-car"; // ORS doesn't support public transport directly
-            default:
-                return "driving-car"; // Default
-        }
+        return switch (transportType.toLowerCase()) {
+            case "car" -> "driving-car";
+            case "bicycle" -> "cycling-regular";
+            case "walking" -> "foot-walking";
+            case "public transport" -> "driving-car"; // ORS doesn't support public transport directly
+            default -> "driving-car"; // Default
+        };
     }
 
     /**
@@ -142,9 +127,9 @@ public class OpenRouteServiceClient {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(url);
 
-            // Verwenden Sie den Authorization-Header
-            request.setHeader("Authorization", apiKey);
-            request.setHeader("Accept", "application/json");
+            // KORRIGIERT: Richtiger Accept-Header für Directions API
+            request.setHeader("Authorization", "Bearer " + apiKey);
+            request.setHeader("Accept", "application/geo+json");
 
             logger.info("Executing GET request to URL: {}", url);
 
@@ -172,27 +157,47 @@ public class OpenRouteServiceClient {
     }
 
     /**
-     * Parses the directions API response
+     * Parses the directions API response (GeoJSON format)
      */
     private RouteInfo parseDirectionsResponse(String responseBody) {
         try {
             JsonNode rootNode = objectMapper.readTree(responseBody);
 
-            if (!rootNode.has("routes") || rootNode.get("routes").size() == 0) {
+            if (!rootNode.has("features") || rootNode.get("features").size() == 0) {
                 logger.error("No routes found in API response");
                 return null;
             }
 
-            JsonNode route = rootNode.get("routes").get(0);
-            JsonNode summary = route.get("summary");
+            JsonNode route = rootNode.get("features").get(0);
+            JsonNode properties = route.get("properties");
 
-            double distance = summary.get("distance").asDouble() / 1000; // Convert to km
-            int duration = (int) (summary.get("duration").asDouble() / 60); // Convert to minutes
+            // GeoJSON structure for ORS directions
+            if (properties.has("summary")) {
+                JsonNode summary = properties.get("summary");
+                double distance = summary.get("distance").asDouble() / 1000; // Convert to km
+                int duration = (int) (summary.get("duration").asDouble() / 60); // Convert to minutes
 
-            logger.info("Route info: distance={}km, duration={}min", distance, duration);
-            return new RouteInfo(distance, duration);
+                logger.info("Route info: distance={}km, duration={}min", distance, duration);
+                return new RouteInfo(distance, duration);
+            } else if (properties.has("segments")) {
+                // Alternative structure
+                JsonNode segments = properties.get("segments");
+                if (segments.isArray() && segments.size() > 0) {
+                    JsonNode firstSegment = segments.get(0);
+                    double distance = firstSegment.get("distance").asDouble() / 1000;
+                    int duration = (int) (firstSegment.get("duration").asDouble() / 60);
+
+                    logger.info("Route info: distance={}km, duration={}min", distance, duration);
+                    return new RouteInfo(distance, duration);
+                }
+            }
+
+            logger.error("Could not parse route summary from response");
+            return null;
+
         } catch (Exception e) {
             logger.error("Error parsing directions response", e);
+            logger.error("Response body: {}", responseBody.substring(0, Math.min(500, responseBody.length())));
             return null;
         }
     }
