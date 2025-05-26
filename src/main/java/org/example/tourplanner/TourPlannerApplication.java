@@ -32,3 +32,4 @@ public class TourPlannerApplication extends Application {
         launch();
     }
 }
+

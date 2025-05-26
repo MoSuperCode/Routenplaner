@@ -7,13 +7,15 @@ module org.example.tourplanner {
     requires spring.boot.autoconfigure;
     requires spring.data.jpa;
     requires jakarta.persistence;
-    requires com.fasterxml.jackson.databind;
     requires org.apache.httpcomponents.client5.httpclient5;
     requires org.apache.httpcomponents.core5.httpcore5;
-    requires java.desktop;
+    requires com.fasterxml.jackson.datatype.jsr310;
+    requires com.fasterxml.jackson.databind;
 
     opens org.example.tourplanner to javafx.fxml;
     opens org.example.tourplanner.ui.views to javafx.fxml;
+    opens org.example.tourplanner.business.service to com.fasterxml.jackson.databind;
+
     exports org.example.tourplanner;
     exports org.example.tourplanner.ui.views;
 }

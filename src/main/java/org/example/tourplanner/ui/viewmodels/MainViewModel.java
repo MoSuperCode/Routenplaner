@@ -10,20 +10,19 @@ import javafx.collections.transformation.FilteredList;
 import javafx.concurrent.Task;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.example.tourplanner.business.service.HttpTourLogService;
+import org.example.tourplanner.business.service.HttpTourService;
 import org.example.tourplanner.business.service.TourLogService;
-import org.example.tourplanner.business.service.TourLogServiceImpl;
 import org.example.tourplanner.business.service.TourService;
-import org.example.tourplanner.business.service.TourServiceImpl;
 import org.example.tourplanner.models.Tour;
 import org.example.tourplanner.models.TourLog;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 public class MainViewModel extends BaseViewModel {
     private static final Logger logger = LogManager.getLogger(MainViewModel.class);
 
-    // Services
+    // Services - now using HTTP services
     private final TourService tourService;
     private final TourLogService tourLogService;
 
@@ -39,16 +38,11 @@ public class MainViewModel extends BaseViewModel {
     private java.util.Timer searchTimer;
 
     public MainViewModel() {
-        // Services initialisieren
-        tourService = TourServiceImpl.getInstance();
-        tourLogService = TourLogServiceImpl.getInstance();
+        // Services initialisieren - now using HTTP services
+        tourService = HttpTourService.getInstance();
+        tourLogService = HttpTourLogService.getInstance();
 
-        // Laden der Demo-Daten über Service, wenn keine Daten vorhanden sind
-        if (tourService.getAllTours().isEmpty()) {
-            createDemoData();
-        }
-
-        // Laden der Daten vom Service
+        // Load data from backend
         loadToursFromService();
 
         // Setup filtered list
@@ -78,11 +72,37 @@ public class MainViewModel extends BaseViewModel {
     // Methode zum Laden der Touren vom Service
     private void loadToursFromService() {
         tours.clear();
-        List<Tour> allTours = tourService.getAllTours();
-        for (Tour tour : allTours) {
-            tours.add(new TourViewModel(tour));
-        }
-        logger.info("Loaded {} tours from service", tours.size());
+
+        // Load tours in background thread to avoid blocking UI
+        Task<List<Tour>> loadTask = new Task<>() {
+            @Override
+            protected List<Tour> call() {
+                return tourService.getAllTours();
+            }
+        };
+
+        loadTask.setOnSucceeded(event -> {
+            List<Tour> allTours = loadTask.getValue();
+
+            // Load tour logs for each tour
+            for (Tour tour : allTours) {
+                // Load tour logs from backend
+                List<TourLog> tourLogs = tourLogService.getTourLogs(tour.getId());
+                tour.getTourLogs().clear();
+                tour.getTourLogs().addAll(tourLogs);
+
+                tours.add(new TourViewModel(tour));
+            }
+            logger.info("Loaded {} tours from backend", tours.size());
+        });
+
+        loadTask.setOnFailed(event -> {
+            logger.error("Failed to load tours from backend", loadTask.getException());
+        });
+
+        Thread loadThread = new Thread(loadTask);
+        loadThread.setDaemon(true);
+        loadThread.start();
     }
 
     private void updateFilter(String searchText) {
@@ -92,7 +112,7 @@ public class MainViewModel extends BaseViewModel {
             return;
         }
 
-        // Direkte Suche über den Service implementieren
+        // Search via backend service
         Task<List<Tour>> searchTask = new Task<>() {
             @Override
             protected List<Tour> call() {
@@ -123,69 +143,88 @@ public class MainViewModel extends BaseViewModel {
         searchThread.start();
     }
 
-    private void createDemoData() {
-        // Create some demo tours and logs
-        Tour tour1 = new Tour("Vienna to Salzburg", "A beautiful trip through Austria",
-                "Vienna", "Salzburg", "Car");
-        tour1.setDistance(295.0);
-        tour1.setEstimatedTime(180); // 3 hours
-
-        // Tour im Service speichern
-        tour1 = tourService.createTour(tour1);
-
-        // TourLogs erstellen
-        TourLog log1 = new TourLog(LocalDateTime.now().minusDays(5),
-                "Great weather, enjoyed the trip", 3, 295.0, 185, 4);
-        tourLogService.createTourLog(tour1.getId(), log1);
-
-        TourLog log2 = new TourLog(LocalDateTime.now().minusDays(2),
-                "Some traffic, but still good", 4, 298.0, 200, 3);
-        tourLogService.createTourLog(tour1.getId(), log2);
-
-        Tour tour2 = new Tour("Vienna to Graz", "Southern route through Styria",
-                "Vienna", "Graz", "Train");
-        tour2.setDistance(200.0);
-        tour2.setEstimatedTime(150); // 2.5 hours
-
-        // Tour im Service speichern
-        tour2 = tourService.createTour(tour2);
-
-        // TourLog erstellen
-        TourLog log3 = new TourLog(LocalDateTime.now().minusWeeks(1),
-                "Relaxing train ride", 2, 200.0, 145, 5);
-        tourLogService.createTourLog(tour2.getId(), log3);
-
-        logger.info("Demo data created");
-    }
-
     // Tour Management
     public void addTour(Tour tour) {
-        Tour createdTour = tourService.createTour(tour);
-        TourViewModel viewModel = new TourViewModel(createdTour);
-        tours.add(viewModel);
-        logger.info("Added new tour: {}", createdTour.getName());
+        Task<Tour> createTask = new Task<>() {
+            @Override
+            protected Tour call() {
+                return tourService.createTour(tour);
+            }
+        };
+
+        createTask.setOnSucceeded(event -> {
+            Tour createdTour = createTask.getValue();
+            if (createdTour != null) {
+                TourViewModel viewModel = new TourViewModel(createdTour);
+                tours.add(viewModel);
+                logger.info("Added new tour: {}", createdTour.getName());
+            }
+        });
+
+        createTask.setOnFailed(event -> {
+            logger.error("Failed to create tour", createTask.getException());
+        });
+
+        Thread createThread = new Thread(createTask);
+        createThread.setDaemon(true);
+        createThread.start();
     }
 
     public void updateTour(TourViewModel viewModel) {
         viewModel.updateModel();
-        Tour updatedTour = tourService.updateTour(viewModel.getTour());
-        // Falls nötig, das ViewModel aktualisieren
-        if (updatedTour != null) {
-            // Keine direkten Änderungen notwendig, da das ViewModel bereits aktualisiert wurde
-            logger.info("Updated tour: {}", updatedTour.getName());
-        } else {
-            logger.warn("Failed to update tour: {}", viewModel.nameProperty().get());
-        }
+
+        Task<Tour> updateTask = new Task<>() {
+            @Override
+            protected Tour call() {
+                return tourService.updateTour(viewModel.getTour());
+            }
+        };
+
+        updateTask.setOnSucceeded(event -> {
+            Tour updatedTour = updateTask.getValue();
+            if (updatedTour != null) {
+                viewModel.updateFromModel();
+                logger.info("Updated tour: {}", updatedTour.getName());
+            } else {
+                logger.warn("Failed to update tour: {}", viewModel.nameProperty().get());
+            }
+        });
+
+        updateTask.setOnFailed(event -> {
+            logger.error("Failed to update tour", updateTask.getException());
+        });
+
+        Thread updateThread = new Thread(updateTask);
+        updateThread.setDaemon(true);
+        updateThread.start();
     }
 
     public void deleteTour(TourViewModel viewModel) {
         Long tourId = viewModel.getTour().getId();
-        tourService.deleteTour(tourId);
-        tours.remove(viewModel);
-        if (selectedTour.get() == viewModel) {
-            selectedTour.set(null);
-        }
-        logger.info("Deleted tour: {}", viewModel.nameProperty().get());
+
+        Task<Void> deleteTask = new Task<>() {
+            @Override
+            protected Void call() {
+                tourService.deleteTour(tourId);
+                return null;
+            }
+        };
+
+        deleteTask.setOnSucceeded(event -> {
+            tours.remove(viewModel);
+            if (selectedTour.get() == viewModel) {
+                selectedTour.set(null);
+            }
+            logger.info("Deleted tour: {}", viewModel.nameProperty().get());
+        });
+
+        deleteTask.setOnFailed(event -> {
+            logger.error("Failed to delete tour", deleteTask.getException());
+        });
+
+        Thread deleteThread = new Thread(deleteTask);
+        deleteThread.setDaemon(true);
+        deleteThread.start();
     }
 
     // TourLog Management
@@ -194,44 +233,95 @@ public class MainViewModel extends BaseViewModel {
 
         if (selectedTourViewModel != null) {
             Long tourId = selectedTourViewModel.getTour().getId();
-            TourLog createdLog = tourLogService.createTourLog(tourId, tourLog);
 
-            if (createdLog != null) {
-                // Update view model
-                selectedTourViewModel.addTourLog(createdLog);
-                logger.info("Added new tour log to tour: {}", selectedTourViewModel.nameProperty().get());
+            Task<TourLog> createLogTask = new Task<>() {
+                @Override
+                protected TourLog call() {
+                    return tourLogService.createTourLog(tourId, tourLog);
+                }
+            };
 
-                // Refresh tour logs table view
-                selectedTourLogProperty().set(null);
-            } else {
-                logger.warn("Failed to create tour log");
-            }
+            createLogTask.setOnSucceeded(event -> {
+                TourLog createdLog = createLogTask.getValue();
+                if (createdLog != null) {
+                    // Update view model
+                    selectedTourViewModel.addTourLog(createdLog);
+                    logger.info("Added new tour log to tour: {}", selectedTourViewModel.nameProperty().get());
+
+                    // Refresh tour logs table view
+                    selectedTourLogProperty().set(null);
+                } else {
+                    logger.warn("Failed to create tour log");
+                }
+            });
+
+            createLogTask.setOnFailed(event -> {
+                logger.error("Failed to create tour log", createLogTask.getException());
+            });
+
+            Thread createLogThread = new Thread(createLogTask);
+            createLogThread.setDaemon(true);
+            createLogThread.start();
         }
     }
 
     public void updateTourLog(TourLogViewModel viewModel) {
         viewModel.updateModel();  // updates model from view model
-        TourLog updatedLog = tourLogService.updateTourLog(viewModel.getTourLog());
 
-        if (updatedLog != null) {
-            // refresh view model properties from updated model
-            viewModel.refreshFromModel();
-            logger.info("Tour log updated successfully");
-        } else {
-            logger.warn("Failed to update tour log");
-        }
+        Task<TourLog> updateLogTask = new Task<>() {
+            @Override
+            protected TourLog call() {
+                return tourLogService.updateTourLog(viewModel.getTourLog());
+            }
+        };
+
+        updateLogTask.setOnSucceeded(event -> {
+            TourLog updatedLog = updateLogTask.getValue();
+            if (updatedLog != null) {
+                // refresh view model properties from updated model
+                viewModel.refreshFromModel();
+                logger.info("Tour log updated successfully");
+            } else {
+                logger.warn("Failed to update tour log");
+            }
+        });
+
+        updateLogTask.setOnFailed(event -> {
+            logger.error("Failed to update tour log", updateLogTask.getException());
+        });
+
+        Thread updateLogThread = new Thread(updateLogTask);
+        updateLogThread.setDaemon(true);
+        updateLogThread.start();
     }
 
     public void deleteTourLog(TourLogViewModel viewModel) {
         if (selectedTour.get() != null) {
             Long logId = viewModel.getTourLog().getId();
-            tourLogService.deleteTourLog(logId);
-            selectedTour.get().removeTourLog(viewModel);
 
-            if (selectedTourLog.get() == viewModel) {
-                selectedTourLog.set(null);
-            }
-            logger.info("Tour log deleted");
+            Task<Void> deleteLogTask = new Task<>() {
+                @Override
+                protected Void call() {
+                    tourLogService.deleteTourLog(logId);
+                    return null;
+                }
+            };
+
+            deleteLogTask.setOnSucceeded(event -> {
+                selectedTour.get().removeTourLog(viewModel);
+                if (selectedTourLog.get() == viewModel) {
+                    selectedTourLog.set(null);
+                }
+                logger.info("Tour log deleted");
+            });
+
+            deleteLogTask.setOnFailed(event -> {
+                logger.error("Failed to delete tour log", deleteLogTask.getException());
+            });
+
+            Thread deleteLogThread = new Thread(deleteLogTask);
+            deleteLogThread.setDaemon(true);
+            deleteLogThread.start();
         }
     }
 
