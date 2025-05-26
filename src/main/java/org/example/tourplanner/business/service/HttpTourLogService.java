@@ -1,5 +1,6 @@
 package org.example.tourplanner.business.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.hc.client5.http.classic.methods.*;
@@ -30,6 +31,7 @@ public class HttpTourLogService implements TourLogService {
         this.httpClient = HttpClients.createDefault();
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     public static synchronized HttpTourLogService getInstance() {

@@ -1,5 +1,6 @@
 package org.example.tourplanner.ui.views;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -185,32 +186,42 @@ public class AddTourDialogController {
 
             Tour calculatedTour = calculateRouteTask.getValue();
             if (calculatedTour != null) {
-                // UI-Felder mit berechneten Werten aktualisieren
-                distanceField.setText(String.format("%.2f", calculatedTour.getDistance()));
-                timeField.setText(String.valueOf(calculatedTour.getEstimatedTime()));
+                // UI-Felder mit berechneten Werten aktualisieren - HIER WAR DAS PROBLEM!
+                Platform.runLater(() -> {
+                    distanceField.setText(String.format("%.2f", calculatedTour.getDistance()));
+                    timeField.setText(String.valueOf(calculatedTour.getEstimatedTime()));
 
-                // Kopieren Sie die routeImagePath, wenn sie generiert wurde
-                if (calculatedTour.getRouteImagePath() != null && !calculatedTour.getRouteImagePath().isEmpty()) {
-                    tour.setRouteImagePath(calculatedTour.getRouteImagePath());
-                }
+                    // WICHTIG: Übertrage die berechneten Werte auch in das tour Objekt
+                    tour.setDistance(calculatedTour.getDistance());
+                    tour.setEstimatedTime(calculatedTour.getEstimatedTime());
+
+                    // Kopiere die routeImagePath, wenn sie generiert wurde
+                    if (calculatedTour.getRouteImagePath() != null && !calculatedTour.getRouteImagePath().isEmpty()) {
+                        tour.setRouteImagePath(calculatedTour.getRouteImagePath());
+                    }
+                });
 
                 // Erfolgsmeldung anzeigen
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Route Calculation");
-                alert.setHeaderText("Route Calculated Successfully");
-                alert.setContentText(String.format(
-                        "Distance: %.2f km\nEstimated Time: %d minutes",
-                        calculatedTour.getDistance(),
-                        calculatedTour.getEstimatedTime()
-                ));
-                alert.showAndWait();
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Route Calculation");
+                    alert.setHeaderText("Route Calculated Successfully");
+                    alert.setContentText(String.format(
+                            "Distance: %.2f km\nEstimated Time: %d minutes",
+                            calculatedTour.getDistance(),
+                            calculatedTour.getEstimatedTime()
+                    ));
+                    alert.showAndWait();
+                });
             } else {
                 // Fehlermeldung anzeigen
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Route Calculation Failed");
-                alert.setHeaderText("Could not calculate route");
-                alert.setContentText("Please check your internet connection and the validity of the locations.");
-                alert.showAndWait();
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Route Calculation Failed");
+                    alert.setHeaderText("Could not calculate route");
+                    alert.setContentText("Please check your internet connection and the validity of the locations.");
+                    alert.showAndWait();
+                });
             }
         });
 
@@ -224,11 +235,13 @@ public class AddTourDialogController {
             }
 
             // Fehlermeldung anzeigen
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Route Calculation Failed");
-            alert.setHeaderText("Error During Route Calculation");
-            alert.setContentText("An error occurred: " + calculateRouteTask.getException().getMessage());
-            alert.showAndWait();
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Route Calculation Failed");
+                alert.setHeaderText("Error During Route Calculation");
+                alert.setContentText("An error occurred: " + calculateRouteTask.getException().getMessage());
+                alert.showAndWait();
+            });
         });
 
         // Starten der Aufgabe in einem Hintergrundthread
@@ -238,7 +251,6 @@ public class AddTourDialogController {
 
         logger.info("Route calculation requested for {} to {}", fromField.getText(), toField.getText());
     }
-
     // Input-Validation
     private boolean isInputValid() {
         String errorMessage = "";

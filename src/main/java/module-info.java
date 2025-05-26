@@ -11,6 +11,7 @@ module org.example.tourplanner {
     requires org.apache.httpcomponents.core5.httpcore5;
     requires com.fasterxml.jackson.datatype.jsr310;
     requires com.fasterxml.jackson.databind;
+    requires java.desktop;
 
     opens org.example.tourplanner to javafx.fxml;
     opens org.example.tourplanner.ui.views to javafx.fxml;

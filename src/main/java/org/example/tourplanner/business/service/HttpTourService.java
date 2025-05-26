@@ -1,5 +1,6 @@
 package org.example.tourplanner.business.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.hc.client5.http.classic.methods.*;
@@ -15,6 +16,7 @@ import org.apache.logging.log4j.Logger;
 import org.example.tourplanner.models.Tour;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +33,7 @@ public class HttpTourService implements TourService {
         this.httpClient = HttpClients.createDefault();
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     public static synchronized HttpTourService getInstance() {
@@ -219,7 +222,7 @@ public class HttpTourService implements TourService {
         return dto;
     }
 
-    // DTO classes (you need to create these to match your backend DTOs)
+    // 1. TourSummaryDto - erweitert um fehlende Felder
     public static class TourSummaryDto {
         private Long id;
         private String name;
@@ -230,6 +233,7 @@ public class HttpTourService implements TourService {
         private Integer estimatedTime;
         private Integer popularity;
         private Double childFriendliness;
+        private LocalDateTime createdAt; // HINZUGEFÜGT
 
         // Getters and setters
         public Long getId() { return id; }
@@ -250,12 +254,16 @@ public class HttpTourService implements TourService {
         public void setPopularity(Integer popularity) { this.popularity = popularity; }
         public Double getChildFriendliness() { return childFriendliness; }
         public void setChildFriendliness(Double childFriendliness) { this.childFriendliness = childFriendliness; }
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     }
 
+    // 2. TourResponseDto - erweitert um fehlende Felder
     public static class TourResponseDto extends TourSummaryDto {
         private String description;
         private String routeImagePath;
         private Integer tourLogsCount;
+        private LocalDateTime updatedAt; // HINZUGEFÜGT
 
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
@@ -263,6 +271,8 @@ public class HttpTourService implements TourService {
         public void setRouteImagePath(String routeImagePath) { this.routeImagePath = routeImagePath; }
         public Integer getTourLogsCount() { return tourLogsCount; }
         public void setTourLogsCount(Integer tourLogsCount) { this.tourLogsCount = tourLogsCount; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+        public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     }
 
     public static class TourRequestDto {
