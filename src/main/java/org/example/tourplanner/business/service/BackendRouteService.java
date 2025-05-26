@@ -94,7 +94,11 @@ public class BackendRouteService {
         public void setTransportType(String transportType) { this.transportType = transportType; }
     }
 
+    // Erweiterte RouteCalculationResponse Klasse im BackendRouteService
     public static class RouteCalculationResponse {
+        private String fromLocation;
+        private String toLocation;
+        private String transportType;     
         private boolean success;
         private Double distance;
         private Integer estimatedTime;
@@ -102,14 +106,27 @@ public class BackendRouteService {
         private String message;
 
         // Getters and setters
+        public String getFromLocation() { return fromLocation; }
+        public void setFromLocation(String fromLocation) { this.fromLocation = fromLocation; }
+
+        public String getToLocation() { return toLocation; }
+        public void setToLocation(String toLocation) { this.toLocation = toLocation; }
+
+        public String getTransportType() { return transportType; }
+        public void setTransportType(String transportType) { this.transportType = transportType; }
+
         public boolean isSuccess() { return success; }
         public void setSuccess(boolean success) { this.success = success; }
+
         public Double getDistance() { return distance; }
         public void setDistance(Double distance) { this.distance = distance; }
+
         public Integer getEstimatedTime() { return estimatedTime; }
         public void setEstimatedTime(Integer estimatedTime) { this.estimatedTime = estimatedTime; }
+
         public String getRouteImagePath() { return routeImagePath; }
         public void setRouteImagePath(String routeImagePath) { this.routeImagePath = routeImagePath; }
+
         public String getMessage() { return message; }
         public void setMessage(String message) { this.message = message; }
     }

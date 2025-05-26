@@ -12,6 +12,8 @@ module org.example.tourplanner {
     requires com.fasterxml.jackson.datatype.jsr310;
     requires com.fasterxml.jackson.databind;
     requires java.desktop;
+    requires jdk.jsobject;
+    requires org.slf4j;
 
     opens org.example.tourplanner to javafx.fxml;
     opens org.example.tourplanner.ui.views to javafx.fxml;

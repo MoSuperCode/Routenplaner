@@ -7,6 +7,7 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.example.tourplanner.business.service.BackendRouteService;
 import org.example.tourplanner.models.Tour;
 import javafx.concurrent.Task;
 import javafx.scene.Cursor;
@@ -103,18 +104,36 @@ public class AddTourDialogController {
     @FXML
     private void onSave() {
         if (isInputValid()) {
-            // Update tour with form values
+            // Update tour with form values - WICHTIG: Lies die aktuellen Werte aus den Feldern
             tour.setName(nameField.getText());
             tour.setFrom(fromField.getText());
             tour.setTo(toField.getText());
             tour.setTransportType(transportTypeComboBox.getValue());
             tour.setDescription(descriptionArea.getText());
-            tour.setDistance(Double.parseDouble(distanceField.getText()));
-            tour.setEstimatedTime(Integer.parseInt(timeField.getText()));
+
+            // Parse die Werte aus den Feldern (nicht aus den alten Objektwerten)
+            try {
+                double distance = Double.parseDouble(distanceField.getText());
+                int estimatedTime = Integer.parseInt(timeField.getText());
+
+                tour.setDistance(distance);
+                tour.setEstimatedTime(estimatedTime);
+
+                logger.info("Saving tour with - Distance: {}km, Time: {}min", distance, estimatedTime);
+            } catch (NumberFormatException e) {
+                logger.error("Error parsing distance or time values", e);
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Invalid Values");
+                alert.setHeaderText("Invalid distance or time values");
+                alert.setContentText("Please ensure distance and time contain valid numbers.");
+                alert.showAndWait();
+                return;
+            }
 
             saveClicked = true;
             dialogStage.close();
-            logger.info("Tour saved: {}", tour.getName());
+            logger.info("Tour saved: {} (Distance: {}km, Time: {}min)",
+                    tour.getName(), tour.getDistance(), tour.getEstimatedTime());
         }
     }
 
@@ -150,23 +169,17 @@ public class AddTourDialogController {
         }
 
         // Erstelle eine Hintergrundaufgabe, um die UI nicht zu blockieren
-        Task<Tour> calculateRouteTask = new Task<>() {
+        Task<BackendRouteService.RouteCalculationResult> calculateRouteTask = new Task<>() {
             @Override
-            protected Tour call() {
+            protected BackendRouteService.RouteCalculationResult call() {
                 try {
-                    // Erstelle temporäre Tour für die Berechnung
-                    Tour tempTour = new Tour(
-                            nameField.getText(),
-                            descriptionArea.getText(),
+                    // Verwende den BackendRouteService direkt
+                    BackendRouteService routeService = BackendRouteService.getInstance();
+                    return routeService.calculateRoute(
                             fromField.getText(),
                             toField.getText(),
                             transportTypeComboBox.getValue()
                     );
-
-                    // Berechne Route mithilfe von RouteService
-                    RouteService routeService = RouteService.getInstance();
-                    Tour calculatedTour = routeService.calculateRoute(tempTour);
-                    return calculatedTour;
                 } catch (Exception e) {
                     logger.error("Error calculating route", e);
                     return null;
@@ -184,21 +197,24 @@ public class AddTourDialogController {
                 progressBar.setVisible(false);
             }
 
-            Tour calculatedTour = calculateRouteTask.getValue();
-            if (calculatedTour != null) {
-                // UI-Felder mit berechneten Werten aktualisieren - HIER WAR DAS PROBLEM!
+            BackendRouteService.RouteCalculationResult result = calculateRouteTask.getValue();
+            if (result != null && result.isSuccess()) {
+                // UI-Felder mit berechneten Werten aktualisieren - WICHTIG: Platform.runLater verwenden
                 Platform.runLater(() -> {
-                    distanceField.setText(String.format("%.2f", calculatedTour.getDistance()));
-                    timeField.setText(String.valueOf(calculatedTour.getEstimatedTime()));
+                    // Setze die Werte explizit in die UI-Felder
+                    distanceField.setText(String.format("%.2f", result.getDistance()));
+                    timeField.setText(String.valueOf(result.getEstimatedTime()));
 
-                    // WICHTIG: Übertrage die berechneten Werte auch in das tour Objekt
-                    tour.setDistance(calculatedTour.getDistance());
-                    tour.setEstimatedTime(calculatedTour.getEstimatedTime());
+                    // WICHTIG: Aktualisiere auch das tour-Objekt
+                    tour.setDistance(result.getDistance());
+                    tour.setEstimatedTime(result.getEstimatedTime());
 
-                    // Kopiere die routeImagePath, wenn sie generiert wurde
-                    if (calculatedTour.getRouteImagePath() != null && !calculatedTour.getRouteImagePath().isEmpty()) {
-                        tour.setRouteImagePath(calculatedTour.getRouteImagePath());
+                    if (result.getRouteImagePath() != null && !result.getRouteImagePath().isEmpty()) {
+                        tour.setRouteImagePath(result.getRouteImagePath());
                     }
+
+                    logger.info("Route calculated - Distance: {}km, Time: {}min, Image: {}",
+                            result.getDistance(), result.getEstimatedTime(), result.getRouteImagePath());
                 });
 
                 // Erfolgsmeldung anzeigen
@@ -208,8 +224,8 @@ public class AddTourDialogController {
                     alert.setHeaderText("Route Calculated Successfully");
                     alert.setContentText(String.format(
                             "Distance: %.2f km\nEstimated Time: %d minutes",
-                            calculatedTour.getDistance(),
-                            calculatedTour.getEstimatedTime()
+                            result.getDistance(),
+                            result.getEstimatedTime()
                     ));
                     alert.showAndWait();
                 });
@@ -219,7 +235,8 @@ public class AddTourDialogController {
                     Alert alert = new Alert(Alert.AlertType.ERROR);
                     alert.setTitle("Route Calculation Failed");
                     alert.setHeaderText("Could not calculate route");
-                    alert.setContentText("Please check your internet connection and the validity of the locations.");
+                    alert.setContentText(result != null ? result.getMessage() :
+                            "Please check your internet connection and the validity of the locations.");
                     alert.showAndWait();
                 });
             }
@@ -251,6 +268,7 @@ public class AddTourDialogController {
 
         logger.info("Route calculation requested for {} to {}", fromField.getText(), toField.getText());
     }
+
     // Input-Validation
     private boolean isInputValid() {
         String errorMessage = "";
@@ -290,4 +308,6 @@ public class AddTourDialogController {
             return false;
         }
     }
+
+    
 }
