@@ -11,10 +11,6 @@ import org.example.tourplanner.business.service.BackendRouteService;
 import org.example.tourplanner.models.Tour;
 import javafx.concurrent.Task;
 import javafx.scene.Cursor;
-import org.example.tourplanner.business.service.RouteService;
-import javafx.concurrent.Task;
-import javafx.scene.Cursor;
-import org.example.tourplanner.business.service.RouteService;
 import javafx.scene.control.ProgressBar;
 
 public class AddTourDialogController {

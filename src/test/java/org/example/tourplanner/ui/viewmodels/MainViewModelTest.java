@@ -1,9 +1,7 @@
 package org.example.tourplanner.ui.viewmodels;
 
 import org.example.tourplanner.business.service.TourLogService;
-import org.example.tourplanner.business.service.TourLogServiceImpl;
 import org.example.tourplanner.business.service.TourService;
-import org.example.tourplanner.business.service.TourServiceImpl;
 import org.example.tourplanner.models.Tour;
 import org.example.tourplanner.models.TourLog;
 import org.junit.jupiter.api.BeforeEach;

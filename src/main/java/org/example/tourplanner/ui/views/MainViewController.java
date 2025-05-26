@@ -6,6 +6,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.web.WebView;
+import javafx.scene.web.WebEngine;
+import javafx.concurrent.Worker;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Callback;
@@ -21,14 +24,16 @@ import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import org.example.tourplanner.config.ConfigurationManager;
-import java.io.File;
 
 public class MainViewController {
     private static final Logger logger = LogManager.getLogger(MainViewController.class);
     private final MainViewModel viewModel = new MainViewModel();
+
+    // WebView Map
+    private WebView mapWebView;
+    private WebEngine mapWebEngine;
+    private boolean mapLoaded = false;
+    private boolean mapInitialized = false;
 
     @FXML
     private TextField searchField;
@@ -59,9 +64,6 @@ public class MainViewController {
 
     @FXML
     private Pane mapPane;
-
-    @FXML
-    private ImageView mapImageView;
 
     @FXML
     private TableView<TourLogViewModel> tourLogTableView;
@@ -119,15 +121,173 @@ public class MainViewController {
                 }
         );
 
-        // Passen Sie die Bildgröße an das mapPane an
-        mapImageView.fitWidthProperty().bind(mapPane.widthProperty().subtract(10));
-        mapImageView.fitHeightProperty().bind(mapPane.heightProperty().subtract(10));
-        mapImageView.setPreserveRatio(true);
+        // Map Panel zunächst leer lassen - wird erst bei Tour-Auswahl initialisiert
+        showEmptyMapMessage();
 
         // Initialize with first tour selected if available
         if (!viewModel.getFilteredTours().isEmpty()) {
             tourListView.getSelectionModel().select(0);
         }
+    }
+
+    private void showEmptyMapMessage() {
+        mapPane.getChildren().clear();
+        Label emptyLabel = new Label("Select a tour to view the route map");
+        emptyLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 14px;");
+        emptyLabel.layoutXProperty().bind(mapPane.widthProperty().subtract(emptyLabel.widthProperty()).divide(2));
+        emptyLabel.layoutYProperty().bind(mapPane.heightProperty().subtract(emptyLabel.heightProperty()).divide(2));
+        mapPane.getChildren().add(emptyLabel);
+    }
+
+    private void initializeMapWebView() {
+        if (mapInitialized) {
+            return; // Map bereits initialisiert
+        }
+
+        logger.info("Initializing map WebView");
+
+        // Erstelle WebView für die Map
+        mapWebView = new WebView();
+        mapWebEngine = mapWebView.getEngine();
+
+        // WebView dem mapPane hinzufügen
+        mapPane.getChildren().clear();
+        mapPane.getChildren().add(mapWebView);
+
+        // WebView an Panel-Größe anpassen
+        mapWebView.prefWidthProperty().bind(mapPane.widthProperty());
+        mapWebView.prefHeightProperty().bind(mapPane.heightProperty());
+
+        // Map laden, wenn WebView bereit ist
+        mapWebEngine.getLoadWorker().stateProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue == Worker.State.SUCCEEDED) {
+                mapLoaded = true;
+                logger.info("Map loaded successfully in main view");
+            }
+        });
+
+        // HTML Map laden
+        try {
+            String mapHtml = createSimpleMapHTML();
+            mapWebEngine.loadContent(mapHtml);
+            mapInitialized = true;
+        } catch (Exception e) {
+            logger.error("Failed to load map HTML", e);
+        }
+    }
+
+    private String createSimpleMapHTML() {
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Simple Tour Map</title>
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                      crossorigin="" />
+                <style>
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        font-family: Arial, sans-serif;
+                    }
+                    #map {
+                        height: 100vh;
+                        width: 100%;
+                    }
+                </style>
+            </head>
+            <body>
+                <div id="map"></div>
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                        crossorigin=""></script>
+                <script>
+                    let map;
+                    let startMarker;
+                    let endMarker;
+                    let routeLine;
+
+                    function initMap() {
+                        map = L.map('map').setView([48.2082, 16.3738], 8);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            maxZoom: 19,
+                            attribution: '© OpenStreetMap contributors'
+                        }).addTo(map);
+                    }
+
+                    function displayRoute(fromLat, fromLng, toLat, toLng, fromName, toName) {
+                        clearMap();
+                        
+                        // Grüner Marker für Start
+                        const startIcon = L.divIcon({
+                            html: '<div style="background-color: #28a745; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                            className: 'custom-marker',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        // Roter Marker für Ende
+                        const endIcon = L.divIcon({
+                            html: '<div style="background-color: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                            className: 'custom-marker',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        startMarker = L.marker([fromLat, fromLng], {icon: startIcon}).addTo(map);
+                        startMarker.bindPopup('<b>Start:</b> ' + fromName);
+                        
+                        endMarker = L.marker([toLat, toLng], {icon: endIcon}).addTo(map);
+                        endMarker.bindPopup('<b>Destination:</b> ' + toName);
+                        
+                        routeLine = L.polyline([
+                            [fromLat, fromLng],
+                            [toLat, toLng]
+                        ], {
+                            color: '#007bff',
+                            weight: 4,
+                            opacity: 0.7
+                        }).addTo(map);
+                        
+                        const group = new L.featureGroup([startMarker, endMarker]);
+                        map.fitBounds(group.getBounds().pad(0.1));
+                    }
+
+                    function clearMap() {
+                        if (startMarker) {
+                            map.removeLayer(startMarker);
+                            startMarker = null;
+                        }
+                        if (endMarker) {
+                            map.removeLayer(endMarker);
+                            endMarker = null;
+                        }
+                        if (routeLine) {
+                            map.removeLayer(routeLine);
+                            routeLine = null;
+                        }
+                    }
+
+                    function centerMap(lat, lng, zoom) {
+                        if (map) {
+                            map.setView([lat, lng], zoom);
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', function() {
+                        initMap();
+                    });
+
+                    window.displayRoute = displayRoute;
+                    window.centerMap = centerMap;
+                    window.clearMap = clearMap;
+                </script>
+            </body>
+            </html>
+            """;
     }
 
     private void setupTourLogTableView() {
@@ -211,7 +371,9 @@ public class MainViewController {
             tourTimeLabel.setText("-");
             tourTransportLabel.setText("-");
             tourDescriptionArea.setText("");
-            mapImageView.setImage(null); // Bild löschen, wenn keine Tour ausgewählt ist
+
+            // Zurück zur leeren Map-Nachricht
+            showEmptyMapMessage();
             return;
         }
 
@@ -226,46 +388,73 @@ public class MainViewController {
         tourTransportLabel.setText(tour.transportTypeProperty().get());
         tourDescriptionArea.setText(tour.descriptionProperty().get());
 
-        // Laden des Kartenbildes, wenn vorhanden
-        loadMapImage(tour.routeImagePathProperty().get());
+        // Map nur initialisieren und Route anzeigen, wenn eine Tour ausgewählt ist
+        initializeMapWebView();
+
+        // Kurz warten, bis Map geladen ist, dann Route anzeigen
+        if (mapLoaded) {
+            displayRouteOnMap(tour);
+        } else {
+            // Wenn Map noch nicht geladen ist, warten und dann Route anzeigen
+            mapWebEngine.getLoadWorker().stateProperty().addListener((obs, oldValue, newValue) -> {
+                if (newValue == Worker.State.SUCCEEDED && mapLoaded) {
+                    displayRouteOnMap(tour);
+                }
+            });
+        }
 
         logger.info("Updated tour details for: {}", tour.nameProperty().get());
     }
 
-    /**
-     * Lädt das Kartenbild aus dem angegebenen Pfad
-     * @param imagePath Pfad zum Kartenbild
-     */
-    private void loadMapImage(String imagePath) {
-        if (imagePath == null || imagePath.isEmpty()) {
-            mapImageView.setImage(null);
-            logger.info("No map image path available");
-            return;
-        }
+    private void displayRouteOnMap(TourViewModel tour) {
+        // Beispiel-Koordinaten basierend auf typischen österreichischen Städten
+        double fromLat = getLatitudeForCity(tour.fromProperty().get());
+        double fromLng = getLongitudeForCity(tour.fromProperty().get());
+        double toLat = getLatitudeForCity(tour.toProperty().get());
+        double toLng = getLongitudeForCity(tour.toProperty().get());
 
         try {
-            // Holen des Basispfads aus der Konfiguration
-            ConfigurationManager configManager = ConfigurationManager.getInstance();
-            String basePath = configManager.getProperty("file.basePath", "./resources/images");
-
-            // Erstellen des vollständigen Pfads
-            File imageFile = new File(basePath, imagePath);
-
-            if (imageFile.exists()) {
-                // Laden des Bildes
-                Image image = new Image(imageFile.toURI().toString());
-                mapImageView.setImage(image);
-
-                logger.info("Map image loaded successfully from: {}", imageFile.getAbsolutePath());
-            } else {
-                logger.warn("Map image file not found: {}", imageFile.getAbsolutePath());
-                mapImageView.setImage(null);
-            }
+            String script = String.format(
+                    "displayRoute(%f, %f, %f, %f, '%s', '%s');",
+                    fromLat, fromLng, toLat, toLng,
+                    tour.fromProperty().get(),
+                    tour.toProperty().get()
+            );
+            mapWebEngine.executeScript(script);
+            logger.info("Route displayed on map: {} -> {}", tour.fromProperty().get(), tour.toProperty().get());
         } catch (Exception e) {
-            logger.error("Error loading map image", e);
-            mapImageView.setImage(null);
+            logger.error("Error displaying route on map", e);
         }
     }
+
+    // Hilfsmethoden für Beispiel-Koordinaten (können später durch echtes Geocoding ersetzt werden)
+    private double getLatitudeForCity(String city) {
+        return switch (city.toLowerCase()) {
+            case "vienna", "wien" -> 48.2082;
+            case "salzburg" -> 47.8095;
+            case "graz" -> 47.0707;
+            case "linz" -> 48.3069;
+            case "innsbruck" -> 47.2692;
+            case "klagenfurt" -> 46.6250;
+            case "bregenz" -> 47.5031;
+            default -> 48.2082; // Default: Vienna
+        };
+    }
+
+    private double getLongitudeForCity(String city) {
+        return switch (city.toLowerCase()) {
+            case "vienna", "wien" -> 16.3738;
+            case "salzburg" -> 13.0550;
+            case "graz" -> 15.4395;
+            case "linz" -> 14.2858;
+            case "innsbruck" -> 11.4041;
+            case "klagenfurt" -> 14.3050;
+            case "bregenz" -> 9.7471;
+            default -> 16.3738; // Default: Vienna
+        };
+    }
+
+    // ... Rest der Methoden bleibt unverändert ...
 
     @FXML
     private void onImportAction() {

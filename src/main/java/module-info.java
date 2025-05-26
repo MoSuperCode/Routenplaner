@@ -1,6 +1,7 @@
 module org.example.tourplanner {
     requires javafx.controls;
     requires javafx.fxml;
+    requires javafx.web;
     requires org.apache.logging.log4j;
     requires org.apache.logging.log4j.core;
     requires spring.boot;
