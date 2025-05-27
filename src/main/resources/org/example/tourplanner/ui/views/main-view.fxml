@@ -89,7 +89,8 @@
                 </GridPane>
 
                 <HBox alignment="CENTER">
-                    <Pane fx:id="mapPane" prefHeight="200" HBox.hgrow="ALWAYS" style="-fx-border-color: lightgray;"/>
+                    <Pane fx:id="mapPane" VBox.vgrow="ALWAYS" style="-fx-border-color: lightgray;"/>
+
                 </HBox>
             </VBox>
             <VBox spacing="5">
@@ -118,11 +119,4 @@
         </SplitPane>
     </center>
 
-    <bottom>
-        <HBox alignment="CENTER">
-            <Pane fx:id="mapPane" prefHeight="200" HBox.hgrow="ALWAYS" style="-fx-border-color: lightgray;">
-                <ImageView fx:id="mapImageView" fitWidth="800" fitHeight="200" preserveRatio="true" />
-            </Pane>
-        </HBox>
-    </bottom>
 </BorderPane>

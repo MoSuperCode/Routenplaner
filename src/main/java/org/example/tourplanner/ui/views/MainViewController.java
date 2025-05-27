@@ -178,115 +178,94 @@ public class MainViewController {
 
     private String createSimpleMapHTML() {
         return """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Simple Tour Map</title>
-                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                      crossorigin="" />
-                <style>
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, sans-serif;
-                    }
-                    #map {
-                        height: 100vh;
-                        width: 100%;
-                    }
-                </style>
-            </head>
-            <body>
-                <div id="map"></div>
-                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-                        crossorigin=""></script>
-                <script>
-                    let map;
-                    let startMarker;
-                    let endMarker;
-                    let routeLine;
-
-                    function initMap() {
-                        map = L.map('map').setView([48.2082, 16.3738], 8);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            maxZoom: 19,
-                            attribution: '© OpenStreetMap contributors'
-                        }).addTo(map);
-                    }
-
-                    function displayRoute(fromLat, fromLng, toLat, toLng, fromName, toName) {
-                        clearMap();
-                        
-                        // Grüner Marker für Start
-                        const startIcon = L.divIcon({
-                            html: '<div style="background-color: #28a745; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
-                            className: 'custom-marker',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10]
-                        });
-                        
-                        // Roter Marker für Ende
-                        const endIcon = L.divIcon({
-                            html: '<div style="background-color: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
-                            className: 'custom-marker',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10]
-                        });
-                        
-                        startMarker = L.marker([fromLat, fromLng], {icon: startIcon}).addTo(map);
-                        startMarker.bindPopup('<b>Start:</b> ' + fromName);
-                        
-                        endMarker = L.marker([toLat, toLng], {icon: endIcon}).addTo(map);
-                        endMarker.bindPopup('<b>Destination:</b> ' + toName);
-                        
-                        routeLine = L.polyline([
-                            [fromLat, fromLng],
-                            [toLat, toLng]
-                        ], {
-                            color: '#007bff',
-                            weight: 4,
-                            opacity: 0.7
-                        }).addTo(map);
-                        
-                        const group = new L.featureGroup([startMarker, endMarker]);
-                        map.fitBounds(group.getBounds().pad(0.1));
-                    }
-
-                    function clearMap() {
-                        if (startMarker) {
-                            map.removeLayer(startMarker);
-                            startMarker = null;
-                        }
-                        if (endMarker) {
-                            map.removeLayer(endMarker);
-                            endMarker = null;
-                        }
-                        if (routeLine) {
-                            map.removeLayer(routeLine);
-                            routeLine = null;
-                        }
-                    }
-
-                    function centerMap(lat, lng, zoom) {
-                        if (map) {
-                            map.setView([lat, lng], zoom);
-                        }
-                    }
-
-                    document.addEventListener('DOMContentLoaded', function() {
-                        initMap();
-                    });
-
-                    window.displayRoute = displayRoute;
-                    window.centerMap = centerMap;
-                    window.clearMap = clearMap;
-                </script>
-            </body>
-            </html>
+                <!DOCTYPE html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="UTF-8">
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                            <title>Simple Tour Map</title>
+                            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                                  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                                  crossorigin="" />
+                            <style>
+                                html, body {
+                                    height: 100%;
+                                    width: 100%;
+                                    margin: 0;
+                                    padding: 0;
+                                }
+                                #map {
+                                    height: 100%;
+                                    width: 100%;
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div id="map"></div>
+                            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                                    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                                    crossorigin=""></script>
+                            <script>
+                                let map;
+                                let startMarker;
+                                let endMarker;
+                                let routeLine;
+                
+                                function initMap() {
+                                    map = L.map('map').setView([48.2082, 16.3738], 10); // Zoom auf Stadtlevel
+                                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                        maxZoom: 19,
+                                        attribution: '© OpenStreetMap contributors'
+                                    }).addTo(map);
+                                }
+                
+                                function displayRoute(fromLat, fromLng, toLat, toLng, fromName, toName) {
+                                    clearMap();
+                
+                                    const startIcon = L.divIcon({
+                                        html: '<div style="background-color: #28a745; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                                        className: 'custom-marker',
+                                        iconSize: [20, 20],
+                                        iconAnchor: [10, 10]
+                                    });
+                
+                                    const endIcon = L.divIcon({
+                                        html: '<div style="background-color: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                                        className: 'custom-marker',
+                                        iconSize: [20, 20],
+                                        iconAnchor: [10, 10]
+                                    });
+                
+                                    startMarker = L.marker([fromLat, fromLng], {icon: startIcon}).addTo(map).bindPopup('<b>Start:</b> ' + fromName);
+                                    endMarker = L.marker([toLat, toLng], {icon: endIcon}).addTo(map).bindPopup('<b>Destination:</b> ' + toName);
+                
+                                    routeLine = L.polyline([[fromLat, fromLng], [toLat, toLng]], {
+                                        color: '#007bff',
+                                        weight: 4,
+                                        opacity: 0.7
+                                    }).addTo(map);
+                
+                                    const group = new L.featureGroup([startMarker, endMarker]);
+                                    map.fitBounds(group.getBounds().pad(0.1));
+                                }
+                
+                                function clearMap() {
+                                    if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+                                    if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
+                                    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+                                }
+                
+                                function centerMap(lat, lng, zoom) {
+                                    if (map) { map.setView([lat, lng], zoom); }
+                                }
+                
+                                document.addEventListener('DOMContentLoaded', initMap);
+                                window.displayRoute = displayRoute;
+                                window.centerMap = centerMap;
+                                window.clearMap = clearMap;
+                            </script>
+                        </body>
+                        </html>
             """;
     }
 

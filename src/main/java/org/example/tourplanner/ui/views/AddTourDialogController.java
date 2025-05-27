@@ -12,9 +12,12 @@ import org.example.tourplanner.models.Tour;
 import javafx.concurrent.Task;
 import javafx.scene.Cursor;
 import javafx.scene.control.ProgressBar;
+import java.util.Locale;
+
 
 public class AddTourDialogController {
     private static final Logger logger = LogManager.getLogger(AddTourDialogController.class);
+    private boolean skipValidation = false;
 
     @FXML
     private TextField nameField;
@@ -40,6 +43,9 @@ public class AddTourDialogController {
     @FXML
     private Button calculateButton;
 
+    @FXML
+    private ProgressBar progressBar;
+
     private Tour tour;
     private boolean saveClicked = false;
     private Stage dialogStage;
@@ -51,18 +57,38 @@ public class AddTourDialogController {
                 "Car", "Bicycle", "Walking", "Public Transport", "Other"
         ));
 
-        // Input validation for numeric fields
+        // FIXED Input validation - mit skipValidation Flag
         distanceField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*(\\.\\d*)?")) {
-                distanceField.setText(oldValue);
+            if (!skipValidation && newValue != null && !newValue.isEmpty()) {
+                // Bessere Regex die auch Dezimalzahlen wie "194.19" erlaubt
+                if (!newValue.matches("\\d*(\\.\\d*)?")) {
+                    logger.debug("Distance validation blocked: '{}' -> reverting to '{}'", newValue, oldValue);
+                    distanceField.setText(oldValue);
+                } else {
+                    logger.debug("Distance validation passed: '{}'", newValue);
+                }
             }
         });
 
         timeField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                timeField.setText(oldValue);
+            if (!skipValidation && newValue != null && !newValue.isEmpty()) {
+                if (!newValue.matches("\\d*")) {
+                    logger.debug("Time validation blocked: '{}' -> reverting to '{}'", newValue, oldValue);
+                    timeField.setText(oldValue);
+                } else {
+                    logger.debug("Time validation passed: '{}'", newValue);
+                }
             }
         });
+    }
+
+    // Hilfsmethode um Werte ohne Validation zu setzen
+    private void setFieldWithoutValidation(TextField field, String value) {
+        logger.info("Setting field without validation: '{}'", value);
+        skipValidation = true;
+        field.setText(value);
+        skipValidation = false;
+        logger.info("Field value after setting: '{}'", field.getText());
     }
 
     public void setDialogStage(Stage dialogStage) {
@@ -79,13 +105,25 @@ public class AddTourDialogController {
             toField.setText(tour.getTo());
             transportTypeComboBox.setValue(tour.getTransportType());
             descriptionArea.setText(tour.getDescription());
-            distanceField.setText(Double.toString(tour.getDistance()));
-            timeField.setText(Integer.toString(tour.getEstimatedTime()));
+
+            // Debug: Logge die aktuellen Werte des Tour-Objekts
+            logger.info("Setting tour in dialog - Tour distance: {}, Tour time: {}",
+                    tour.getDistance(), tour.getEstimatedTime());
+
+            // WICHTIG: Verwende die neue Methode ohne Validation
+            setFieldWithoutValidation(distanceField, String.format(Locale.US, "%.1f", tour.getDistance()));
+            setFieldWithoutValidation(timeField, Integer.toString(tour.getEstimatedTime()));
+
+            // Debug: Logge was tatsächlich in die Felder gesetzt wurde
+            logger.info("After setting fields - Distance field: '{}', Time field: '{}'",
+                    distanceField.getText(), timeField.getText());
         } else {
             // Set defaults for new tour
             transportTypeComboBox.setValue("Car");
-            distanceField.setText("0.0");
-            timeField.setText("0");
+            setFieldWithoutValidation(distanceField, "0.0");
+            setFieldWithoutValidation(timeField, "0");
+
+            logger.info("Setting defaults for new tour");
         }
     }
 
@@ -109,7 +147,7 @@ public class AddTourDialogController {
 
             // Parse die Werte aus den Feldern (nicht aus den alten Objektwerten)
             try {
-                double distance = Double.parseDouble(distanceField.getText());
+                double distance = Double.parseDouble(distanceField.getText().replace(',', '.'));
                 int estimatedTime = Integer.parseInt(timeField.getText());
 
                 tour.setDistance(distance);
@@ -139,12 +177,6 @@ public class AddTourDialogController {
         logger.info("Tour edit canceled");
     }
 
-
-
-
-    @FXML
-    private ProgressBar progressBar; // ProgressBar zur tour-dialog.fxml hinzufügen
-
     @FXML
     private void onCalculateRoute() {
         if (fromField.getText().isEmpty() || toField.getText().isEmpty() || transportTypeComboBox.getValue() == null) {
@@ -169,7 +201,6 @@ public class AddTourDialogController {
             @Override
             protected BackendRouteService.RouteCalculationResult call() {
                 try {
-                    // Verwende den BackendRouteService direkt
                     BackendRouteService routeService = BackendRouteService.getInstance();
                     return routeService.calculateRoute(
                             fromField.getText(),
@@ -195,22 +226,35 @@ public class AddTourDialogController {
 
             BackendRouteService.RouteCalculationResult result = calculateRouteTask.getValue();
             if (result != null && result.isSuccess()) {
-                // UI-Felder mit berechneten Werten aktualisieren - WICHTIG: Platform.runLater verwenden
                 Platform.runLater(() -> {
-                    // Setze die Werte explizit in die UI-Felder
-                    distanceField.setText(String.format("%.2f", result.getDistance()));
-                    timeField.setText(String.valueOf(result.getEstimatedTime()));
+                    try {
+                        // Debug: Aktuelle Feldwerte vor Update
+                        logger.info("Before update - Distance field: '{}', Time field: '{}'",
+                                distanceField.getText(), timeField.getText());
+                        logger.info("Result values - Distance: {}, Time: {}",
+                                result.getDistance(), result.getEstimatedTime());
 
-                    // WICHTIG: Aktualisiere auch das tour-Objekt
-                    tour.setDistance(result.getDistance());
-                    tour.setEstimatedTime(result.getEstimatedTime());
+                        // 1. Tour-Objekt aktualisieren
+                        tour.setDistance(result.getDistance());
+                        tour.setEstimatedTime(result.getEstimatedTime());
+                        if (result.getRouteImagePath() != null && !result.getRouteImagePath().isEmpty()) {
+                            tour.setRouteImagePath(result.getRouteImagePath());
+                        }
 
-                    if (result.getRouteImagePath() != null && !result.getRouteImagePath().isEmpty()) {
-                        tour.setRouteImagePath(result.getRouteImagePath());
+                        // 2. UI-Felder mit der neuen Methode ohne Validation setzen
+                        String formattedDistance = String.format(Locale.US, "%.2f", result.getDistance());
+                        setFieldWithoutValidation(distanceField, formattedDistance);
+                        setFieldWithoutValidation(timeField, String.valueOf(result.getEstimatedTime()));
+
+                        // Debug: Werte nach Update
+                        logger.info("After update - Distance field: '{}', Time field: '{}'",
+                                distanceField.getText(), timeField.getText());
+                        logger.info("Tour object - Distance: {}, Time: {}",
+                                tour.getDistance(), tour.getEstimatedTime());
+
+                    } catch (Exception e) {
+                        logger.error("Error updating UI fields", e);
                     }
-
-                    logger.info("Route calculated - Distance: {}km, Time: {}min, Image: {}",
-                            result.getDistance(), result.getEstimatedTime(), result.getRouteImagePath());
                 });
 
                 // Erfolgsmeldung anzeigen
@@ -304,6 +348,4 @@ public class AddTourDialogController {
             return false;
         }
     }
-
-    
 }
