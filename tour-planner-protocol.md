@@ -20,11 +20,23 @@ The system is structured into clear layers:
 
 
 
-```Class Diagram:```  
-![img.png](img.png)
+<table>
+<tr>
+<td>
 
-```Use-Case:```  
-![img_1.png](img_1.png)
+Class Diagram:<br>
+<img src="img.png" width="300">
+
+</td>
+<td>
+
+Use-Case:<br>
+<img src="img_1.png" width="300">
+
+</td>
+</tr>
+</table>
+
 
 
 ```Sequence Diagram:```  
