@@ -27,10 +27,10 @@
             </MenuBar>
             <ToolBar>
                 <Button text="New Tour" onAction="#onNewTourAction"/>
-                <Button text="Edit Tour" onAction="#onEditTourAction"/>
-                <Button text="Delete Tour" onAction="#onDeleteTourAction"/>
                 <Separator orientation="VERTICAL"/>
-                <Button text="New Log" onAction="#onNewLogAction"/>
+                <Button text="Edit Tour" onAction="#onEditTourAction"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Delete Tour" onAction="#onDeleteTourAction"/>
                 <Separator orientation="VERTICAL"/>
                 <Label text="Search:"/>
                 <TextField fx:id="searchField" promptText="Enter search term..." onKeyReleased="#onSearchAction"/>
@@ -107,9 +107,14 @@
                 <HBox spacing="5" alignment="CENTER_LEFT">
                     <Label text="Tour Logs:"/>
                     <Pane HBox.hgrow="ALWAYS"/>
+                    <Button text="New Log" onAction="#onNewLogAction"/>
+                    <Separator orientation="VERTICAL"/>
                     <Button text="Edit Log" onAction="#onEditTourLogAction"/>
+                    <Separator orientation="VERTICAL"/>
                     <Button text="Delete Log" onAction="#onDeleteTourLogAction"/>
+                    <Separator orientation="VERTICAL"/>
                     <Button text="Report" onAction="#onGenerateReportAction"/>
+                    <Separator orientation="VERTICAL"/>
                     <Button text="Summary" onAction="#onGenerateSummaryAction"/>
                 </HBox>
                 <TableView fx:id="tourLogTableView" VBox.vgrow="ALWAYS">
