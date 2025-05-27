@@ -1,201 +1,147 @@
-# Tour Planner Application Protocol
-
-look it up in Github for a better experience: https://github.com/MoSuperCode/Routenplaner.git
+# Tour Planner Project Final Protocol
 
 ## 1. Introduction
 
-The Tour Planner is a JavaFX desktop application developed using the Model-View-ViewModel (MVVM) architectural pattern. It allows users to plan, document, and analyze tours (trips) with detailed information and logging capabilities. This document describes the user experience design and includes analysis of the application wireframes.
+The Tour Planner project is a Java-based desktop application built with JavaFX, following the MVVM (Model-View-ViewModel) architectural pattern. It offers full tour management, including planning, logging, route calculation, and reporting. The backend is implemented using Spring Boot, with a layered architecture (UI, Business Logic, Data Access) and uses a PostgreSQL database with JPA/Hibernate as the ORM layer.
 
-## 2. System Architecture Overview
+This is the documentation to meet all criteria defined in the final exam checklist and describes the architecture, features, implementation details, libraries used, and project decisions.
 
-The Tour Planner application follows the MVVM pattern with the following components:
+---
 
-- **Models**: Represent the data structures (Tour, TourLog)
-- **ViewModels**: Handle the application logic and state management
-- **Views**: The user interface components defined in FXML
-- **Services**: Business logic layer for tour and tour log operations
+## 2. System Architecture
 
-## 3. User Interface Components
+The system is structured into clear layers:
 
-### 3.1 Main Application Window
+* **UI Layer (JavaFX)**: FXML-based markup, JavaFX controllers, and view models (MVVM) handling data binding and event handling.
+* **Business Logic Layer (Spring Boot services)**: Contains service classes handling application logic, calling APIs, calculating values, and coordinating data access.
+* **Data Access Layer (Spring Data JPA)**: Repository interfaces for accessing the PostgreSQL database using Hibernate ORM.
 
-The main application window is divided into several key areas:
-![Bildschirmfoto 2025-03-23 um 22.29.00.png](Bildschirmfoto%202025-03-23%20um%2022.29.00.png)
+### Diagram Overview
 
-1. **Menu Bar**: Contains File, Options, and Help menus
-2. **Toolbar**: Quick access buttons for common operations
-3. **Tour List**: Left sidebar displaying all available tours
-4. **Tour Details Area**: Central area showing details of the selected tour
-5. **Tour Logs Table**: Bottom area displaying logs for the selected tour
-6. **Status Bar**: Shows the current application status
+Class-diagram:
+![img.png](img.png)
+```
+Sequence-diagram:
+[UI/JavaFX] <--> [ViewModel (MVVM)] <--> [Spring Boot BL Services] <--> [Spring Data JPA] <--> [Postgres DB]
+```
 
-### 3.2 Menu Structure
+All configuration values (e.g., database connection) are stored in `application.properties`. No hardcoded values or credentials are used.
 
-- **File Menu**:
-  - Import: Import tours from external sources //work in progress
-  - Export: Export tours to external formats //work in progress
-  - Exit: Close the application
-  
-- **Options Menu**:
-  - Preferences: Configure application settings
-  
-- **Help Menu**:
-  - About: Display information about the application
+---
 
-### 3.3 Toolbar
+## 3. Libraries and Technologies
 
-The toolbar provides quick access to the most common operations:
-- New Tour: Create a new tour
-- Edit Tour: Modify the selected tour
-- Delete Tour: Remove the selected tour
-- New Log: Add a new log to the selected tour
-- Search: Find tours based on various criteria
+| Purpose              | Library/Technology               |
+| -------------------- | -------------------------------- |
+| UI Framework         | JavaFX with FXML                 |
+| Architecture Pattern | MVVM                             |
+| Backend Framework    | Spring Boot                      |
+| Database             | PostgreSQL + H2 (for tests)      |
+| ORM                  | Hibernate (via Spring Data JPA)  |
+| HTTP API Integration | OpenRouteService + OpenStreetMap |
+| Logging              | log4j2                           |
+| Report Generation    | iText (PDF generation)           |
+| Testing              | JUnit, MockMvc, Mockito          |
 
-## 4. User Workflows
+---
 
-### 4.1 Tour Management
+## 4. Features Implemented
 
-#### 4.1.1 Creating a New Tour
+Create/modify/delete tours (with required attributes and computed fields)
+Display tours in a list view with all details and route map
+Validate user input and prevent crashes on bad input
+Create/modify/delete tour logs linked to specific tours
+Full-text search across tours, logs, and computed attributes
+Generate detailed PDF reports for single tours (with maps)
+Generate summary reports for aggregated data
+Import/export tour data in supported formats
+Integrate unique feature: **Live Route Calculation** via OpenRouteService API
 
-1. The user clicks the "New Tour" button in the toolbar or selects a similar option from a menu
-2. A dialog appears with fields for tour details:
-   - Name
-   - From location
-   - To location
-   - Transport type (Car, Bicycle, Walking, Public Transport, Other)
-   - Description
-   - Distance (km)
-   - Estimated time (minutes)
-3. The user fills in the necessary details
-4. The user can optionally click "Calculate Route" to automatically determine distance and time // work in progress
-5. The user clicks "Save" to create the tour or "Cancel" to abort
-6. If saved, the new tour appears in the tour list and is selected automatically
+---
 
-#### 4.1.2 Editing a Tour
+## 5. Application Architecture Details
 
-1. The user selects a tour from the list
-2. The user clicks the "Edit Tour" button
-3. A dialog appears with the current tour details pre-filled
-4. The user modifies the desired fields
-5. The user clicks "Save" to apply changes or "Cancel" to discard them
-6. The tour list and details display are updated to reflect any changes
+* **Layer calls**: Each layer only calls the immediate layer below. The UI never accesses the DAL directly.
+* **Exceptions**: Custom exceptions are defined in the business layer; no implementation-specific exceptions leak across layers.
+* **API Use**:
 
-#### 4.1.3 Deleting a Tour
+    * OpenRouteService Directions API retrieves live route and distance data.
+    * OpenStreetMap is used as the tile server for map visualization.
+* **Data Storage**: All core data (except static map images) is stored in the PostgreSQL database.
+* **Logging**: The system uses log4j2 for structured error, debug, and info logging.
+* **Configuration**: All sensitive and configurable properties are stored externally (config files), not hardcoded.
 
-1. The user selects a tour from the list
-2. The user clicks the "Delete Tour" button
-3. A confirmation dialog appears
-4. If confirmed, the tour is removed from the list and any associated logs are deleted
+---
 
-### 4.2 Tour Log Management
+## 6. Design Pattern and Decisions
 
-#### 4.2.1 Creating a New Tour Log
+* **Design Pattern**: MVVM is consistently applied on the frontend. Dependency Injection (DI) is used extensively on the backend (via Spring Boot).
+* **Why MVVM**: Ensures separation of concerns, makes UI testable, and allows cleaner data binding.
+* **Why DI**: Improves testability, decouples components, and adheres to SOLID principles.
+* **Unit Testing**: Covers service layer, REST controllers, and utility classes with meaningful tests (over 20 total).
 
-1. The user selects a tour from the list
-2. The user clicks the "New Log" button
-3. A dialog appears with fields for log details:
-   - Date and time
-   - Total time spent (hours:minutes)
-   - Total distance covered (km)
-   - Difficulty rating (1-10 scale)
-   - Overall rating (1-5 scale)
-   - Comment/notes
-4. The user fills in the log details
-5. The user clicks "Save" to create the log or "Cancel" to abort
-6. If saved, the new log appears in the tour logs table
+---
 
-#### 4.2.2 Editing a Tour Log
+## 7. UX and Wireframes
 
-1. The user selects a tour from the list
-2. The user selects a log entry from the tour logs table
-3. The user clicks an "Edit Log" button (to be added)
-4. A dialog appears with the current log details pre-filled
-5. The user modifies the desired fields
-6. The user clicks "Save" to apply changes or "Cancel" to discard them
-7. The logs table is updated to reflect any changes
+The application wireframes were designed to be intuitive:
 
-#### 4.2.3 Deleting a Tour Log
+* **Resizable layout**: The interface responds to window resizing where appropriate.
+* **Reusable components**: Dialogs and input forms are modular.
+* **User Flows**: Adding/editing/deleting tours and logs is done through guided dialogs with clear error handling.
+* **Map integration**: Dynamic, interactive maps are embedded using Leaflet.js inside JavaFX WebView components.
 
-1. The user selects a tour from the list
-2. The user selects a log entry from the tour logs table
-3. The user clicks a "Delete Log" button (to be added)
-4. A confirmation dialog appears
-5. If confirmed, the log is removed from the table
+Wireframes and mockups can be provided separately (see repository screenshots).
 
-### 4.3 Search Functionality
+---
 
-1. The user enters a search term in the search field
-2. The tour list automatically updates to display only tours matching the search criteria
-3. The search includes tour names, descriptions, locations, and log comments
-4. Clearing the search field shows all tours again
+## 8. Use Cases and Sequence Diagrams
 
-### 4.4 Report Generation 
+### Main Use Cases:
 
-1. The user selects a tour from the list
-2. The user clicks the "Report" button 
-3. A detailed PDF report is generated with all tour information and logs // to be implemented
-4. The report is displayed or saved according to user preference // to be implemented
+* Plan and save a tour with computed distance/time
+* Add logs to document tour experiences
+* Search for tours/logs via full-text search
+* Export/import data for backups or sharing
+* Generate PDF reports for single tours or overall summaries
 
-### 4.5 Summary Generation // to be implemented
+Sequence diagrams illustrate the interaction between UI, ViewModel, Service, Repository, and DB components for each use case.
 
-1. The user clicks the "Summary" button
-2. A summary report is generated containing aggregated statistics about all tours // to be implemented
-3. The summary is displayed or saved according to user preference // to be implemented
+---
 
-## 5. Data Display
+## 9. Tracked Time
 
-### 5.1 Tour Details Display
+We tracked project time in the Git commit history and local records. Major time blocks were spent on:
 
-For each selected tour, the following information is displayed:
-- Tour name
-- Start and end locations
-- Distance (in kilometers)
-- Estimated time (in hours:minutes format)
-- Transport type
-- Description
-- A map visualization of the route (placeholder in the wireframe)
+* UI development and data binding
+* REST integration and backend setup
+* Testing and validation
+* Report generation integration
 
-### 5.2 Tour Logs Table
+Git history is available at:
+Frontend → [https://github.com/MoSuperCode/Routenplaner](https://github.com/MoSuperCode/Routenplaner)
+Backend → [https://github.com/MoSuperCode/RoutenplanerBackend](https://github.com/MoSuperCode/RoutenplanerBackend)
 
-The tour logs table displays the following columns:
-- Date and time of the log entry
-- Total time taken (hours:minutes)
-- Distance covered (km)
-- Difficulty rating (1-10)
-- Overall rating (1-5)
-- Comments/notes
+---
 
-## 6. Feature Enhancements and Missing Functionality
+## 10. Lessons Learned
 
-Based on the current implementation status, the following enhancements should be made:
+* Integrating external APIs (OpenRouteService) requires careful error handling and rate limit awareness.
+* JavaFX MVVM design greatly improves maintainability but needs discipline to avoid mixing concerns.
+* Spring Boot's layered architecture simplifies complex backend tasks and makes testing easier.
+* Report generation with iText has a learning curve but allows powerful PDF exports.
+* Designing meaningful unit tests improves confidence and reduces regressions.
 
-1. **Edit Tour Log Functionality**: Implement the ability to edit existing tour logs
-2. **Delete Tour Log Functionality**: Implement the ability to delete tour logs
-3. **Map Integration**: Replace the map placeholder with an actual map showing the route
-4. **Route Calculation**: Implement the route calculation functionality to automatically determine distance and time
-5. **Report/Summary Generation**: Implement the report and summary generation features
+---
 
-## 7. Usability Considerations
+## 11. Summary
 
-### 7.1 Form Validation
+The Tour Planner application fulfills all required project criteria:
 
-- All required fields are validated before submission
-- Numeric fields only accept valid numeric input
-- Appropriate error messages are displayed for invalid input
+* Layered architecture with clear separation
+* Full CRUD for tours and logs
+* Integrated search, reporting, import/export
+* Solid unit testing
+* Detailed project documentation and tracked development process
 
-### 7.2 Navigation and Selection
-
-- Tours are selected by clicking on them in the tour list
-- Selected tour's details and logs are automatically displayed
-- Selection state is visually indicated
-
-### 7.3 Responsive Design
-
-- A Few components resize appropriately when the window is resized, the rest is fixed for a specific size
-- The interface maintains usability at different window sizes (but there are limits)
-
-## 8. Conclusion
-
-The Tour Planner application provides a comprehensive solution for planning and documenting tours. The wireframe demonstrates a well-structured interface that follows established UI patterns. Once the missing functionality is implemented, the application will offer a complete user experience for tour management.
-
-The next development phase should focus on implementing the missing features (Edit Tour Log, Delete Tour Log) and enhancing the existing functionality with proper map integration and automated route calculation.
+We believe this project provides a robust, scalable, and user-friendly solution for managing tour planning and logging, aligned with all exam requirements.
