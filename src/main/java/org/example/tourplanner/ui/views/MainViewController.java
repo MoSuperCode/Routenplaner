@@ -207,6 +207,16 @@ public class MainViewController {
             case "amsterdam" -> new double[]{52.3676, 4.9041};
             case "netherlands", "holland" -> new double[]{52.1326, 5.2913};
             case "london" -> new double[]{51.5074, -0.1278};
+            case "paris" -> new double[]{48.8566, 2.3522};
+            case "brussels", "brüssel" -> new double[]{50.8503, 4.3517};
+            case "madrid" -> new double[]{40.4168, -3.7038};
+            case "barcelona" -> new double[]{41.3851, 2.1734};
+            case "lisbon", "lissabon" -> new double[]{38.7223, -9.1393};
+            case "rome", "rom" -> new double[]{41.9028, 12.4964};
+            case "milan", "mailand" -> new double[]{45.4642, 9.1900};
+            case "florence", "florenz" -> new double[]{43.7696, 11.2558};
+            case "venice", "venedig" -> new double[]{45.4408, 12.3155};
+            case "naples", "neapel" -> new double[]{40.8518, 14.2681};
             default -> new double[]{47.6965, 13.3457}; // Austria center
         };
     }
