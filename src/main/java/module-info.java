@@ -15,6 +15,7 @@ module org.example.tourplanner {
     requires java.desktop;
     requires jdk.jsobject;
     requires org.slf4j;
+    requires itextpdf;
 
     opens org.example.tourplanner to javafx.fxml;
     opens org.example.tourplanner.ui.views to javafx.fxml;
