@@ -9,33 +9,32 @@ public class HttpClientConfig {
     private static final String BASE_URL = "http://localhost:8080/api";
     private static final int TIMEOUT_SECONDS = 30;
 
-    private static CloseableHttpClient httpClient;
 
+    /**
+     * Erstellt einen neuen HttpClient für jeden Request
+     * Das vermeidet  "Connection pool shut down" Problem
+     */
+    public static CloseableHttpClient createHttpClient() {
+        RequestConfig config = RequestConfig.custom()
+                .setConnectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .setResponseTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .build();
+
+        return HttpClients.custom()
+                .setDefaultRequestConfig(config)
+                .build();
+    }
+
+
+    @Deprecated
     public static synchronized CloseableHttpClient getHttpClient() {
-        if (httpClient == null) {
-            RequestConfig config = RequestConfig.custom()
-                    .setConnectTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .setResponseTimeout(TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                    .build();
-
-            httpClient = HttpClients.custom()
-                    .setDefaultRequestConfig(config)
-                    .build();
-        }
-        return httpClient;
+        return createHttpClient();
     }
 
     public static String getBaseUrl() {
         return BASE_URL;
     }
 
-    public static void closeHttpClient() {
-        if (httpClient != null) {
-            try {
-                httpClient.close();
-            } catch (Exception e) {
-                // Log error
-            }
-        }
-    }
+    // Diese Methode ist nicht mehr notwendig
+    // public static void closeHttpClient() { ... }
 }

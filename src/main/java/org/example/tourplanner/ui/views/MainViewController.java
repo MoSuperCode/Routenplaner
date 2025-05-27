@@ -14,6 +14,7 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.example.tourplanner.business.service.HttpReportService;
 import org.example.tourplanner.models.TourLog;
 import org.example.tourplanner.ui.viewmodels.MainViewModel;
 import org.example.tourplanner.ui.viewmodels.TourLogViewModel;
@@ -25,10 +26,21 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.io.IOException;
 import java.util.Locale;
+import javafx.concurrent.Task;
+import javafx.scene.Cursor;
+import javafx.stage.FileChooser;
+import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+
 
 public class MainViewController {
     private static final Logger logger = LogManager.getLogger(MainViewController.class);
     private final MainViewModel viewModel = new MainViewModel();
+    // Report Service hinzufügen
+    private final HttpReportService reportService = HttpReportService.getInstance();
+
 
     // Map variables
     private WebView mapWebView;
@@ -535,23 +547,6 @@ public class MainViewController {
         }
     }
 
-    @FXML
-    private void onGenerateReportAction() {
-        logger.info("Generate report action triggered");
-        TourViewModel selectedTour = viewModel.selectedTourProperty().get();
-        if (selectedTour != null) {
-            logger.info("Generating report for tour: {}", selectedTour.nameProperty().get());
-            // TODO: Implement report generation
-        } else {
-            showNoTourSelectedWarning();
-        }
-    }
-
-    @FXML
-    private void onGenerateSummaryAction() {
-        logger.info("Generate summary action triggered");
-        // TODO: Implement summary generation
-    }
 
     // Menu actions
     @FXML private void onImportAction() { logger.info("Import action triggered"); }
@@ -569,44 +564,219 @@ public class MainViewController {
         alert.showAndWait();
     }
 
-    // Debug method for testing map
+
+
+
+
     @FXML
-    private void onTestMapAction() {
-        logger.info("Testing map functionality...");
-        if (!mapLoaded) {
-            logger.warn("Map not loaded yet");
+    private void onGenerateReportAction() {
+        logger.info("Generate report action triggered");
+        TourViewModel selectedTour = viewModel.selectedTourProperty().get();
+
+        if (selectedTour == null) {
+            showNoTourSelectedWarning();
             return;
         }
 
+        // File chooser for save location
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Tour Report");
+        fileChooser.setInitialFileName("tour-report-" + selectedTour.nameProperty().get().replaceAll("[^a-zA-Z0-9]", "_") + ".pdf");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+        );
+
+        // Set initial directory to user's home/TourPlanner/Reports
+        String defaultPath = reportService.getReportPath("");
+        File defaultDir = new File(defaultPath).getParentFile();
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            generateTourReportAsync(selectedTour.getTour().getId(), file.getAbsolutePath());
+        }
+    }
+    @FXML
+    private void onGenerateSummaryAction() {
+        logger.info("Generate summary action triggered");
+
+        if (viewModel.getTours().isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("No Tours Available");
+            alert.setHeaderText("No Tours to Summarize");
+            alert.setContentText("Please create some tours first before generating a summary report.");
+            alert.showAndWait();
+            return;
+        }
+
+        // File chooser for save location
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save Summary Report");
+        fileChooser.setInitialFileName("tour-summary-report-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".pdf");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+        );
+
+        // Set initial directory
+        String defaultPath = reportService.getReportPath("");
+        File defaultDir = new File(defaultPath).getParentFile();
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            generateSummaryReportAsync(file.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Generate tour report asynchronously to avoid blocking the UI
+     */
+    private void generateTourReportAsync(Long tourId, String outputPath) {
+        // Show progress cursor
+        tourListView.getScene().setCursor(Cursor.WAIT);
+
+        Task<Boolean> reportTask = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return reportService.generateTourReport(tourId, outputPath);
+            }
+        };
+
+        reportTask.setOnSucceeded(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            boolean success = reportTask.getValue();
+            if (success) {
+                // Show success dialog with option to open file
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Report Generated");
+                alert.setHeaderText("Tour Report Generated Successfully");
+                alert.setContentText("The report has been saved to:\n" + outputPath +
+                        "\n\nWould you like to open the file?");
+
+                ButtonType openButton = new ButtonType("Open Report");
+                ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+                alert.getButtonTypes().setAll(openButton, closeButton);
+
+                alert.showAndWait().ifPresent(response -> {
+                    if (response == openButton) {
+                        openReportFile(outputPath);
+                    }
+                });
+            } else {
+                showErrorDialog("Report Generation Failed",
+                        "Could not generate the tour report. Please check the logs for details.");
+            }
+        });
+
+        reportTask.setOnFailed(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            logger.error("Report generation failed", reportTask.getException());
+            showErrorDialog("Report Generation Failed",
+                    "An error occurred while generating the report: " + reportTask.getException().getMessage());
+        });
+
+        // Run in background thread
+        Thread reportThread = new Thread(reportTask);
+        reportThread.setDaemon(true);
+        reportThread.start();
+    }
+
+    /**
+     * Generate summary report asynchronously
+     */
+    private void generateSummaryReportAsync(String outputPath) {
+        // Show progress cursor
+        tourListView.getScene().setCursor(Cursor.WAIT);
+
+        Task<Boolean> reportTask = new Task<>() {
+            @Override
+            protected Boolean call() {
+                return reportService.generateSummaryReport(outputPath);
+            }
+        };
+
+        reportTask.setOnSucceeded(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            boolean success = reportTask.getValue();
+            if (success) {
+                // Show success dialog with option to open file
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Summary Report Generated");
+                alert.setHeaderText("Summary Report Generated Successfully");
+                alert.setContentText("The summary report has been saved to:\n" + outputPath +
+                        "\n\nWould you like to open the file?");
+
+                ButtonType openButton = new ButtonType("Open Report");
+                ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+                alert.getButtonTypes().setAll(openButton, closeButton);
+
+                alert.showAndWait().ifPresent(response -> {
+                    if (response == openButton) {
+                        openReportFile(outputPath);
+                    }
+                });
+            } else {
+                showErrorDialog("Report Generation Failed",
+                        "Could not generate the summary report. Please check the logs for details.");
+            }
+        });
+
+        reportTask.setOnFailed(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            logger.error("Summary report generation failed", reportTask.getException());
+            showErrorDialog("Report Generation Failed",
+                    "An error occurred while generating the report: " + reportTask.getException().getMessage());
+        });
+
+        // Run in background thread
+        Thread reportThread = new Thread(reportTask);
+        reportThread.setDaemon(true);
+        reportThread.start();
+    }
+
+    /**
+     * Opens the generated report file with the default system application
+     */
+    private void openReportFile(String filePath) {
         try {
-            String script = "showSimpleRoute(48.2082, 16.3738, 47.8095, 13.0550, 'Wien', 'Salzburg');";
-            mapWebEngine.executeScript(script);
-            logger.info("Test route displayed");
+            File file = new File(filePath);
+            if (file.exists()) {
+                // Use Desktop API to open with default application
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(file);
+                } else {
+                    // Fallback for systems without Desktop support
+                    String os = System.getProperty("os.name").toLowerCase();
+                    if (os.contains("win")) {
+                        Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + filePath);
+                    } else if (os.contains("mac")) {
+                        Runtime.getRuntime().exec("open " + filePath);
+                    } else if (os.contains("nix") || os.contains("nux")) {
+                        Runtime.getRuntime().exec("xdg-open " + filePath);
+                    }
+                }
+            } else {
+                showErrorDialog("File Not Found", "The report file could not be found at: " + filePath);
+            }
         } catch (Exception e) {
-            logger.error("Error testing map", e);
+            logger.error("Error opening report file", e);
+            showErrorDialog("Cannot Open File",
+                    "Could not open the report file. Please navigate to the file manually:\n" + filePath);
         }
     }
 
 
-@FXML
-private void onDebugMapAction() {
-    if (mapWebEngine != null) {
-        String currentLocation = mapWebEngine.getLocation();
-        logger.info("Current WebEngine location: {}", currentLocation);
-
-        // JavaScript Console prüfen
-        try {
-            Object result = mapWebEngine.executeScript("document.title");
-            logger.info("Document title: {}", result);
-
-            Object mapExists = mapWebEngine.executeScript("typeof map !== 'undefined'");
-            logger.info("Map object exists: {}", mapExists);
-
-        } catch (Exception e) {
-            logger.error("Error checking map state", e);
-        }
-    } else {
-        logger.warn("MapWebEngine is null");
-    }
-}
 }
