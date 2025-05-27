@@ -14,12 +14,14 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.example.tourplanner.business.service.HttpImportExportService;
 import org.example.tourplanner.business.service.HttpReportService;
 import org.example.tourplanner.models.TourLog;
 import org.example.tourplanner.ui.viewmodels.MainViewModel;
 import org.example.tourplanner.ui.viewmodels.TourLogViewModel;
 import org.example.tourplanner.ui.viewmodels.TourViewModel;
 import org.example.tourplanner.models.Tour;
+
 
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -32,7 +34,7 @@ import javafx.stage.FileChooser;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
+import java.util.Optional;
 
 
 public class MainViewController {
@@ -40,6 +42,9 @@ public class MainViewController {
     private final MainViewModel viewModel = new MainViewModel();
     // Report Service hinzufügen
     private final HttpReportService reportService = HttpReportService.getInstance();
+    // Import/Export Service hinzugefügt
+    private final HttpImportExportService importExportService = HttpImportExportService.getInstance();
+
 
 
     // Map variables
@@ -549,8 +554,6 @@ public class MainViewController {
 
 
     // Menu actions
-    @FXML private void onImportAction() { logger.info("Import action triggered"); }
-    @FXML private void onExportAction() { logger.info("Export action triggered"); }
     @FXML private void onExitAction() { logger.info("Exit action triggered"); System.exit(0); }
     @FXML private void onPreferencesAction() { logger.info("Preferences action triggered"); }
 
@@ -778,5 +781,596 @@ public class MainViewController {
         }
     }
 
+    @FXML
+    private void onImportAction() {
+        logger.info("Import action triggered");
+
+        // File chooser for import file
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Import Tours from JSON");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("JSON Files", "*.json"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+
+        // Set initial directory
+        String defaultPath = importExportService.getExportDirectory();
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        File file = fileChooser.showOpenDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            importToursAsync(file.getAbsolutePath());
+        }
+    }
+
+
+
+    /**
+     * Import tours asynchronously
+     */
+    private void importToursAsync(String filePath) {
+        // Show progress cursor
+        tourListView.getScene().setCursor(Cursor.WAIT);
+
+        Task<HttpImportExportService.ImportResult> importTask = new Task<>() {
+            @Override
+            protected HttpImportExportService.ImportResult call() {
+                return importExportService.importToursFromJson(filePath);
+            }
+        };
+
+        importTask.setOnSucceeded(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            HttpImportExportService.ImportResult result = importTask.getValue();
+            if (result.isSuccess()) {
+                // Refresh tours list
+                viewModel.refreshTours();
+
+                // Show success dialog
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Import Successful");
+                alert.setHeaderText("Tours Imported Successfully");
+                alert.setContentText(String.format(
+                        "Successfully imported %d tours from:\n%s",
+                        result.getImportedCount(),
+                        filePath
+                ));
+                alert.showAndWait();
+
+                logger.info("Import completed: {} tours imported", result.getImportedCount());
+            } else {
+                showErrorDialog("Import Failed", result.getMessage());
+            }
+        });
+
+        importTask.setOnFailed(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            logger.error("Import failed", importTask.getException());
+            showErrorDialog("Import Failed",
+                    "An error occurred while importing tours: " + importTask.getException().getMessage());
+        });
+
+        // Run in background thread
+        Thread importThread = new Thread(importTask);
+        importThread.setDaemon(true);
+        importThread.start();
+    }
+
+    /**
+     * Export all tours to JSON
+     */
+    private void exportAllToursToJson() {
+        if (viewModel.getTours().isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("No Tours to Export");
+            alert.setHeaderText("No Tours Available");
+            alert.setContentText("Please create some tours first before exporting.");
+            alert.showAndWait();
+            return;
+        }
+
+        // File chooser for save location
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export All Tours to JSON");
+        fileChooser.setInitialFileName("tours-export-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmm")) + ".json");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("JSON Files", "*.json")
+        );
+
+        // Set initial directory
+        String defaultPath = importExportService.getExportDirectory();
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            exportToursAsync(file.getAbsolutePath(), "JSON", () ->
+                    importExportService.exportToursToJson(file.getAbsolutePath()));
+        }
+    }
+
+    /**
+     * Export all tours to CSV
+     */
+    private void exportAllToursToCsv() {
+        if (viewModel.getTours().isEmpty()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("No Tours to Export");
+            alert.setHeaderText("No Tours Available");
+            alert.setContentText("Please create some tours first before exporting.");
+            alert.showAndWait();
+            return;
+        }
+
+        // File chooser for save location
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export All Tours to CSV");
+        fileChooser.setInitialFileName("tours-export-" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmm")) + ".csv");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("CSV Files", "*.csv")
+        );
+
+        // Set initial directory
+        String defaultPath = importExportService.getExportDirectory();
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            exportToursAsync(file.getAbsolutePath(), "CSV", () ->
+                    importExportService.exportToursToCsv(file.getAbsolutePath()));
+        }
+    }
+
+    /**
+     * Export selected tour to JSON
+     */
+    private void exportSelectedTourToJson() {
+        TourViewModel selectedTour = viewModel.selectedTourProperty().get();
+        if (selectedTour == null) {
+            showNoTourSelectedWarning();
+            return;
+        }
+
+        // File chooser for save location
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Selected Tour to JSON");
+        fileChooser.setInitialFileName("tour-" +
+                selectedTour.nameProperty().get().replaceAll("[^a-zA-Z0-9]", "_") +
+                "-export.json");
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("JSON Files", "*.json")
+        );
+
+        // Set initial directory
+        String defaultPath = importExportService.getExportDirectory();
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            Long tourId = selectedTour.getTour().getId();
+            exportToursAsync(file.getAbsolutePath(), "JSON", () ->
+                    importExportService.exportTourToJson(tourId, file.getAbsolutePath()));
+        }
+    }
+
+    /**
+     * Generic async export method
+     */
+    private void exportToursAsync(String outputPath, String format, java.util.concurrent.Callable<Boolean> exportOperation) {
+        // Show progress cursor
+        tourListView.getScene().setCursor(Cursor.WAIT);
+
+        Task<Boolean> exportTask = new Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                return exportOperation.call();
+            }
+        };
+
+        exportTask.setOnSucceeded(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            boolean success = exportTask.getValue();
+            if (success) {
+                // Show success dialog with option to open file location
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Export Successful");
+                alert.setHeaderText("Tours Exported Successfully");
+                alert.setContentText("The tours have been exported to " + format + " format:\n" + outputPath +
+                        "\n\nWould you like to open the file location?");
+
+                ButtonType openFolderButton = new ButtonType("Open Folder");
+                ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+                alert.getButtonTypes().setAll(openFolderButton, closeButton);
+
+                alert.showAndWait().ifPresent(response -> {
+                    if (response == openFolderButton) {
+                        openFileLocation(outputPath);
+                    }
+                });
+
+                logger.info("Export completed successfully to: {}", outputPath);
+            } else {
+                showErrorDialog("Export Failed", "Could not export tours to " + format + ". Please check the logs for details.");
+            }
+        });
+
+        exportTask.setOnFailed(event -> {
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            logger.error("Export failed", exportTask.getException());
+            showErrorDialog("Export Failed",
+                    "An error occurred while exporting tours: " + exportTask.getException().getMessage());
+        });
+
+        // Run in background thread
+        Thread exportThread = new Thread(exportTask);
+        exportThread.setDaemon(true);
+        exportThread.start();
+    }
+
+    /**
+     * Opens the file location in the system file manager
+     */
+    private void openFileLocation(String filePath) {
+        try {
+            File file = new File(filePath);
+            File directory = file.getParentFile();
+
+            if (directory != null && directory.exists()) {
+                // Use Desktop API to open folder
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(directory);
+                } else {
+                    // Fallback for systems without Desktop support
+                    String os = System.getProperty("os.name").toLowerCase();
+                    if (os.contains("win")) {
+                        Runtime.getRuntime().exec("explorer.exe /select," + filePath);
+                    } else if (os.contains("mac")) {
+                        Runtime.getRuntime().exec("open -R " + filePath);
+                    } else if (os.contains("nix") || os.contains("nux")) {
+                        Runtime.getRuntime().exec("xdg-open " + directory.getAbsolutePath());
+                    }
+                }
+            } else {
+                showErrorDialog("Folder Not Found", "The export folder could not be found at: " + directory);
+            }
+        } catch (Exception e) {
+            logger.error("Error opening file location", e);
+            showErrorDialog("Cannot Open Folder",
+                    "Could not open the export folder. Please navigate to the file manually:\n" + filePath);
+        }
+    }
+    // Add these separate action methods to your MainViewController.java class:
+
+    /**
+     * Action method for exporting all tours to JSON from menu
+     */
+    @FXML
+    private void onExportAllToursJsonAction() {
+        logger.info("Export all tours to JSON action triggered");
+        exportAllToursToJson();
+    }
+
+    /**
+     * Action method for exporting all tours to CSV from menu
+     */
+    @FXML
+    private void onExportAllToursCsvAction() {
+        logger.info("Export all tours to CSV action triggered");
+        exportAllToursToCsv();
+    }
+
+    /**
+     * Action method for exporting selected tour to JSON from menu
+     */
+    @FXML
+    private void onExportSelectedTourJsonAction() {
+        logger.info("Export selected tour to JSON action triggered");
+        exportSelectedTourToJson();
+    }
+
+// Also update the existing onExportAction method to show a selection dialog:
+
+    @FXML
+    private void onExportAction() {
+        logger.info("Export action triggered - showing selection dialog");
+
+        // Create a choice dialog for export options
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("All Tours (JSON)",
+                "All Tours (JSON)", "All Tours (CSV)", "Selected Tour (JSON)");
+        dialog.setTitle("Export Tours");
+        dialog.setHeaderText("Choose Export Option");
+        dialog.setContentText("What would you like to export?");
+
+        Optional<String> result = dialog.showAndWait();
+        result.ifPresent(choice -> {
+            switch (choice) {
+                case "All Tours (JSON)" -> exportAllToursToJson();
+                case "All Tours (CSV)" -> exportAllToursToCsv();
+                case "Selected Tour (JSON)" -> exportSelectedTourToJson();
+            }
+        });
+    }
+
+    /**
+     * Enhanced method to show export progress with better user feedback
+     */
+    private void exportToursAsyncWithProgress(String outputPath, String format,
+                                              String description,
+                                              java.util.concurrent.Callable<Boolean> exportOperation) {
+
+        // Create progress dialog
+        Alert progressAlert = new Alert(Alert.AlertType.INFORMATION);
+        progressAlert.setTitle("Exporting Tours");
+        progressAlert.setHeaderText("Exporting " + description);
+        progressAlert.setContentText("Please wait while the export is being processed...");
+
+        // Remove OK button to prevent user from closing
+        progressAlert.getButtonTypes().clear();
+        progressAlert.show();
+
+        // Show progress cursor
+        tourListView.getScene().setCursor(Cursor.WAIT);
+
+        Task<Boolean> exportTask = new Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                return exportOperation.call();
+            }
+        };
+
+        exportTask.setOnSucceeded(event -> {
+            // Close progress dialog
+            progressAlert.close();
+
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            boolean success = exportTask.getValue();
+            if (success) {
+                // Show success dialog with file info
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Export Successful");
+                successAlert.setHeaderText("Tours Exported Successfully");
+
+                // Get file size for user info
+                String fileSizeInfo = getFileSizeInfo(outputPath);
+                successAlert.setContentText(String.format(
+                        "Successfully exported %s to %s format:\n%s\n\n%s\n\nWould you like to open the file location?",
+                        description.toLowerCase(), format, outputPath, fileSizeInfo
+                ));
+
+                ButtonType openFolderButton = new ButtonType("Open Folder");
+                ButtonType openFileButton = new ButtonType("Open File");
+                ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+                successAlert.getButtonTypes().setAll(openFolderButton, openFileButton, closeButton);
+
+                successAlert.showAndWait().ifPresent(response -> {
+                    if (response == openFolderButton) {
+                        openFileLocation(outputPath);
+                    } else if (response == openFileButton) {
+                        openFile(outputPath);
+                    }
+                });
+
+                logger.info("Export completed successfully: {} to {}", description, outputPath);
+            } else {
+                showErrorDialog("Export Failed",
+                        "Could not export " + description.toLowerCase() + " to " + format +
+                                ". Please check the logs for details.");
+            }
+        });
+
+        exportTask.setOnFailed(event -> {
+            // Close progress dialog
+            progressAlert.close();
+
+            // Reset cursor
+            tourListView.getScene().setCursor(Cursor.DEFAULT);
+
+            Throwable exception = exportTask.getException();
+            logger.error("Export failed for {}", description, exception);
+
+            showErrorDialog("Export Failed",
+                    "An error occurred while exporting " + description.toLowerCase() + ":\n" +
+                            (exception != null ? exception.getMessage() : "Unknown error"));
+        });
+
+        // Run in background thread
+        Thread exportThread = new Thread(exportTask);
+        exportThread.setDaemon(true);
+        exportThread.start();
+    }
+
+    /**
+     * Get file size information for user feedback
+     */
+    private String getFileSizeInfo(String filePath) {
+        try {
+            File file = new File(filePath);
+            if (file.exists()) {
+                long fileSize = file.length();
+                String sizeText;
+                if (fileSize < 1024) {
+                    sizeText = fileSize + " bytes";
+                } else if (fileSize < 1024 * 1024) {
+                    sizeText = String.format("%.1f KB", fileSize / 1024.0);
+                } else {
+                    sizeText = String.format("%.1f MB", fileSize / (1024.0 * 1024.0));
+                }
+                return "File size: " + sizeText;
+            }
+        } catch (Exception e) {
+            logger.debug("Could not get file size for {}", filePath);
+        }
+        return "";
+    }
+
+    /**
+     * Open file with default system application
+     */
+    private void openFile(String filePath) {
+        try {
+            File file = new File(filePath);
+            if (file.exists()) {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop.getDesktop().open(file);
+                } else {
+                    // Fallback for systems without Desktop support
+                    String os = System.getProperty("os.name").toLowerCase();
+                    if (os.contains("win")) {
+                        Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + filePath);
+                    } else if (os.contains("mac")) {
+                        Runtime.getRuntime().exec("open " + filePath);
+                    } else if (os.contains("nix") || os.contains("nux")) {
+                        Runtime.getRuntime().exec("xdg-open " + filePath);
+                    }
+                }
+            } else {
+                showErrorDialog("File Not Found", "The exported file could not be found at: " + filePath);
+            }
+        } catch (Exception e) {
+            logger.error("Error opening file", e);
+            showErrorDialog("Cannot Open File",
+                    "Could not open the exported file. Please navigate to it manually:\n" + filePath);
+        }
+    }
+
+    /**
+     * Update the existing export methods to use the enhanced progress method
+     */
+    private void exportAllToursToJsonEnhanced() {
+        if (viewModel.getTours().isEmpty()) {
+            showNoToursWarning();
+            return;
+        }
+
+        FileChooser fileChooser = createJsonFileChooser("Export All Tours to JSON",
+                "tours-export-" + getCurrentTimestamp() + ".json");
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            exportToursAsyncWithProgress(
+                    file.getAbsolutePath(),
+                    "JSON",
+                    "All Tours (" + viewModel.getTours().size() + " tours)",
+                    () -> importExportService.exportToursToJson(file.getAbsolutePath())
+            );
+        }
+    }
+
+    private void exportAllToursToCsvEnhanced() {
+        if (viewModel.getTours().isEmpty()) {
+            showNoToursWarning();
+            return;
+        }
+
+        FileChooser fileChooser = createCsvFileChooser("Export All Tours to CSV",
+                "tours-export-" + getCurrentTimestamp() + ".csv");
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            exportToursAsyncWithProgress(
+                    file.getAbsolutePath(),
+                    "CSV",
+                    "All Tours (" + viewModel.getTours().size() + " tours)",
+                    () -> importExportService.exportToursToCsv(file.getAbsolutePath())
+            );
+        }
+    }
+
+    private void exportSelectedTourToJsonEnhanced() {
+        TourViewModel selectedTour = viewModel.selectedTourProperty().get();
+        if (selectedTour == null) {
+            showNoTourSelectedWarning();
+            return;
+        }
+
+        FileChooser fileChooser = createJsonFileChooser("Export Selected Tour to JSON",
+                "tour-" + sanitizeFileName(selectedTour.nameProperty().get()) + "-export.json");
+
+        File file = fileChooser.showSaveDialog(tourListView.getScene().getWindow());
+        if (file != null) {
+            Long tourId = selectedTour.getTour().getId();
+            exportToursAsyncWithProgress(
+                    file.getAbsolutePath(),
+                    "JSON",
+                    "Tour: " + selectedTour.nameProperty().get(),
+                    () -> importExportService.exportTourToJson(tourId, file.getAbsolutePath())
+            );
+        }
+    }
+
+// Helper methods
+
+    private FileChooser createJsonFileChooser(String title, String initialFileName) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        fileChooser.setInitialFileName(initialFileName);
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("JSON Files", "*.json")
+        );
+
+        String defaultPath = importExportService.getExportDirectory();
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        return fileChooser;
+    }
+
+    private FileChooser createCsvFileChooser(String title, String initialFileName) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        fileChooser.setInitialFileName(initialFileName);
+        fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("CSV Files", "*.csv")
+        );
+
+        String defaultPath = importExportService.getExportDirectory();
+        File defaultDir = new File(defaultPath);
+        if (defaultDir.exists()) {
+            fileChooser.setInitialDirectory(defaultDir);
+        }
+
+        return fileChooser;
+    }
+
+    private String getCurrentTimestamp() {
+        return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HHmm"));
+    }
+
+    private String sanitizeFileName(String fileName) {
+        return fileName.replaceAll("[^a-zA-Z0-9]", "_");
+    }
+
+    private void showNoToursWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("No Tours to Export");
+        alert.setHeaderText("No Tours Available");
+        alert.setContentText("Please create some tours first before exporting.");
+        alert.showAndWait();
+    }
 
 }

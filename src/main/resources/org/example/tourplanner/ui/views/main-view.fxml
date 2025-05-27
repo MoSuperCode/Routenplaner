@@ -13,8 +13,13 @@
         <VBox>
             <MenuBar>
                 <Menu text="File">
-                    <MenuItem text="Import" onAction="#onImportAction"/>
-                    <MenuItem text="Export" onAction="#onExportAction"/>
+                    <MenuItem text="Import Tours..." onAction="#onImportAction"/>
+                    <Menu text="Export">
+                        <MenuItem text="Export All Tours (JSON)..." onAction="#onExportAllToursJsonAction"/>
+                        <MenuItem text="Export All Tours (CSV)..." onAction="#onExportAllToursCsvAction"/>
+                        <SeparatorMenuItem />
+                        <MenuItem text="Export Selected Tour (JSON)..." onAction="#onExportSelectedTourJsonAction"/>
+                    </Menu>
                     <SeparatorMenuItem />
                     <MenuItem text="Exit" onAction="#onExitAction"/>
                 </Menu>
