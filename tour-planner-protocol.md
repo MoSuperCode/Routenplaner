@@ -20,17 +20,17 @@ The system is structured into clear layers:
 
 
 
-```Class Diagram:  ```
+```Class Diagram:```  
 ![img.png](img.png)
 
 
 
 
-```Sequence Diagram:  ```
+```Sequence Diagram:```  
 ![img_2.png](img_2.png)
 
 
-```Use-Case:  ```
+```Use-Case:```
 ![img_1.png](img_1.png)
 
 All configuration values (e.g., database connection) are stored in `application.properties`. No hardcoded values or credentials are used.
