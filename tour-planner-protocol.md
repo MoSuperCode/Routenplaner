@@ -20,15 +20,18 @@ The system is structured into clear layers:
 
 
 
-Class-diagram:
+Class Diagram:
 ![img.png](img.png)
 
 
 
 ```
-Sequence-diagram:
+Sequence Diagram:
 [UI/JavaFX] <--> [ViewModel (MVVM)] <--> [Spring Boot BL Services] <--> [Spring Data JPA] <--> [Postgres DB]
 ```
+
+Use-Case:
+![img_1.png](img_1.png)
 
 All configuration values (e.g., database connection) are stored in `application.properties`. No hardcoded values or credentials are used.
 
