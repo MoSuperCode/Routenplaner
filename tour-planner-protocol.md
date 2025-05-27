@@ -18,10 +18,12 @@ The system is structured into clear layers:
 
 ### Diagram Overview
 
-```
+
+
 Class-diagram:
 ![img.png](img.png)
-```
+
+
 
 ```
 Sequence-diagram:
