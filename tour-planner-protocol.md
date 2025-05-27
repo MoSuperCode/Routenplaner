@@ -131,10 +131,10 @@ Sequence diagrams illustrate the interaction between UI, ViewModel, Service, Rep
 
 ## 9. Tracked Time
 
-We tracked project time in the Git commit history and local records. Major time blocks were spent on:
+We tracked project time in the Git commit history and local records (100+hours). Major time blocks were spent on:
 
 * UI development and data binding
-* REST integration and backend setup
+* REST integration and backend setup (I started as Monolith and went back to the commit where i had no Backend and created a seperate Backend)
 * Testing and validation
 * Report generation integration
 
@@ -151,6 +151,7 @@ Backend → [https://github.com/MoSuperCode/RoutenplanerBackend](https://github.
 * Spring Boot's layered architecture simplifies complex backend tasks and makes testing easier.
 * Report generation with iText has a learning curve but allows powerful PDF exports.
 * Designing meaningful unit tests improves confidence and reduces regressions.
+* Spring and JavaFX in the SAME Project are really hard to combine (experimental)
 
 ---
 
