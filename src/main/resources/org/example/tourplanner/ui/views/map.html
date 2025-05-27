@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Tour Route Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"/>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"></script>
+<script>
+    let map;
+    let routeLayer;
+    let startMarker;
+    let endMarker;
+
+    function initMap() {
+        console.log('Initializing map...');
+        // Österreich als Standard-Zentrum
+        map = L.map('map').setView([47.6965, 13.3457], 7);
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        console.log('Map initialized successfully');
+    }
+
+    function showRoute(coords) {
+        if (!map) initMap();
+
+        console.log('Showing route with', coords.length, 'coordinates');
+
+        // Remove existing elements
+        clearRoute();
+
+        if (coords && coords.length > 0) {
+            // Convert coordinates [lng, lat] to [lat, lng] for Leaflet
+            const latlngs = coords.map(p => [p[1], p[0]]);
+
+            // Add route line
+            routeLayer = L.polyline(latlngs, {
+                color: '#007bff',
+                weight: 4,
+                opacity: 0.8
+            }).addTo(map);
+
+            // Add start and end markers
+            if (latlngs.length >= 2) {
+                const start = latlngs[0];
+                const end = latlngs[latlngs.length - 1];
+
+                // Start marker (green)
+                startMarker = L.marker(start, {
+                    icon: L.divIcon({
+                        html: '<div style="background-color: #28a745; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                        className: 'custom-marker',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map).bindPopup('Start');
+
+                // End marker (red)
+                endMarker = L.marker(end, {
+                    icon: L.divIcon({
+                        html: '<div style="background-color: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white;"></div>',
+                        className: 'custom-marker',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(map).bindPopup('Ziel');
+            }
+
+            // Fit map to route bounds
+            map.fitBounds(routeLayer.getBounds(), {padding: [10, 10]});
+        }
+    }
+
+    function showSimpleRoute(fromLat, fromLng, toLat, toLng, fromName, toName) {
+        if (!map) initMap();
+
+        console.log('Showing simple route:', fromName, 'to', toName);
+
+        // Remove existing elements
+        clearRoute();
+
+        // Create simple straight line between points
+        const latlngs = [[fromLat, fromLng], [toLat, toLng]];
+
+        // Add route line
+        routeLayer = L.polyline(latlngs, {
+            color: '#007bff',
+            weight: 4,
+            opacity: 0.8,
+            dashArray: '10, 5'
+        }).addTo(map);
+
+        // Add markers
+        startMarker = L.marker([fromLat, fromLng], {
+            icon: L.divIcon({
+                html: '<div style="background-color: #28a745; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                className: 'custom-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            })
+        }).addTo(map).bindPopup('<b>Start:</b> ' + fromName);
+
+        endMarker = L.marker([toLat, toLng], {
+            icon: L.divIcon({
+                html: '<div style="background-color: #dc3545; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                className: 'custom-marker',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            })
+        }).addTo(map).bindPopup('<b>Ziel:</b> ' + toName);
+
+        // Fit map to route bounds
+        const bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds, {padding: [20, 20]});
+    }
+
+    function clearRoute() {
+        if (routeLayer) {
+            map.removeLayer(routeLayer);
+            routeLayer = null;
+        }
+        if (startMarker) {
+            map.removeLayer(startMarker);
+            startMarker = null;
+        }
+        if (endMarker) {
+            map.removeLayer(endMarker);
+            endMarker = null;
+        }
+    }
+
+    function centerMap(lat, lng, zoom = 10) {
+        if (map) {
+            map.setView([lat, lng], zoom);
+        }
+    }
+
+    // Initialize when page loads
+    window.onload = () => {
+        console.log('Page loaded, initializing map...');
+        initMap();
+    };
+
+    // Make functions available globally
+    window.showRoute = showRoute;
+    window.showSimpleRoute = showSimpleRoute;
+    window.clearRoute = clearRoute;
+    window.centerMap = centerMap;
+    window.initMap = initMap;
+</script>
+</body>
+</html>
